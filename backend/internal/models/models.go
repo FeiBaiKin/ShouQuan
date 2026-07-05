@@ -198,7 +198,7 @@ type PurchaseOrder struct {
 	PaymentScene  string       `gorm:"size:16" json:"payment_scene"`  // page / wap / precreate / native
 	TradeNo       string       `gorm:"size:64" json:"trade_no"`
 	LicenseID     *uint        `gorm:"index" json:"license_id"` // 支付成功后回填
-	License       *License     `gorm:"foreignKey:LicenseID" json:"license,omitempty"`
+	License       *License     `gorm:"foreignKey:LicenseID;constraint:OnDelete:SET NULL;" json:"license,omitempty"`
 	PaidAt        *time.Time   `json:"paid_at"`
 	ExpiresAt     *time.Time   `json:"expires_at"` // 订单过期时间（pending 超时变 expired）
 	CreatedAt     time.Time    `json:"created_at"`

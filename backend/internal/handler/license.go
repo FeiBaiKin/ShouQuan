@@ -382,12 +382,39 @@ func DeleteLicense(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "授权不存在"})
 		return
 	}
-	if err := a.DB.Delete(&l).Error; err != nil {
+	tx := a.DB.Begin()
+	if tx.Error != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "删除失败"})
 		return
 	}
-	a.DB.Where("license_id = ?", l.ID).Delete(&models.LicenseEvent{})
-	a.DB.Where("license_id = ?", l.ID).Delete(&models.HeartbeatLog{})
-	a.DB.Where("license_id = ?", l.ID).Delete(&models.DownloadToken{})
+	if err := tx.Model(&models.PurchaseOrder{}).Where("license_id = ?", l.ID).Update("license_id", nil).Error; err != nil {
+		tx.Rollback()
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "删除失败"})
+		return
+	}
+	if err := tx.Where("license_id = ?", l.ID).Delete(&models.DownloadToken{}).Error; err != nil {
+		tx.Rollback()
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "删除失败"})
+		return
+	}
+	if err := tx.Where("license_id = ?", l.ID).Delete(&models.LicenseEvent{}).Error; err != nil {
+		tx.Rollback()
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "删除失败"})
+		return
+	}
+	if err := tx.Where("license_id = ?", l.ID).Delete(&models.HeartbeatLog{}).Error; err != nil {
+		tx.Rollback()
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "删除失败"})
+		return
+	}
+	if err := tx.Delete(&l).Error; err != nil {
+		tx.Rollback()
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "删除失败"})
+		return
+	}
+	if err := tx.Commit().Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "删除失败"})
+		return
+	}
 	c.JSON(http.StatusOK, gin.H{"message": "已删除"})
 }
