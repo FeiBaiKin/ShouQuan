@@ -1,0 +1,38 @@
+# --- 构建产物 ---
+node_modules/
+frontend/dist/
+*.tsbuildinfo
+
+# Go 编译产物
+backend/authcenter-server*
+*.test
+
+# 前端嵌入后端的拷贝（由构建脚本生成）
+backend/public/
+
+# --- 本地敏感配置 ---
+backend/config.yaml
+
+# --- 部署 / 测试产物 ---
+deploy-package/
+*.tar.gz
+
+# --- 运行时数据 ---
+backend/release/
+
+# --- 工具 / IDE ---
+.zcode/
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# --- OS 文件 ---
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# --- 日志 / 临时文件 ---
+*.log
+tmp/
