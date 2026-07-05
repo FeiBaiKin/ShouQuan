@@ -43,6 +43,7 @@ type PaymentConfig struct {
 	SiteURL string
 	// 微信
 	WxAppId, WxMchId, WxSerialNo, WxApiV3Key, WxPrivateKey, WxNotifyUrl string
+	WxPlatformSerialNo, WxPlatformPublicKey                             string
 	// 支付宝
 	AliAppId, AliPrivateKey, AliPublicKey, AliScene, AliNotifyUrl, AliReturnUrl string
 	// 已启用的支付方式（来自 settings 表 payment_enabled_providers）
@@ -139,6 +140,8 @@ func GetPaymentConfig(db *gorm.DB, fallbackSiteURL string) PaymentConfig {
 	cfg.WxSerialNo = m["payment_wx_serial_no"]
 	cfg.WxApiV3Key = m["payment_wx_api_v3_key"]
 	cfg.WxPrivateKey = m["payment_wx_private_key"]
+	cfg.WxPlatformSerialNo = m["payment_wx_platform_serial_no"]
+	cfg.WxPlatformPublicKey = m["payment_wx_platform_public_key"]
 	cfg.WxNotifyUrl = normalizeURL(m["payment_wx_notify_url"])
 	if cfg.WxNotifyUrl == "" && siteURL != "" {
 		cfg.WxNotifyUrl = siteURL + "/api/payment/callback/wechat"
@@ -227,6 +230,32 @@ func ProcessPaidOrder(db *gorm.DB, orderNo, paidAmount, tradeNo string) (*models
 		if err := tx.Commit().Error; err != nil {
 			return nil, false, err
 		}
+		return &order, false, nil
+	}
+	if order.Status == models.OrderExpired || order.Status == models.OrderClosed {
+		if err := tx.Commit().Error; err != nil {
+			return nil, false, err
+		}
+		return &order, false, nil
+	}
+	if order.Status != models.OrderPending {
+		tx.Rollback()
+		return nil, false, fmt.Errorf("订单状态不可入账: %s", order.Status)
+	}
+	if order.ExpiresAt != nil && time.Now().After(*order.ExpiresAt) {
+		if err := tx.Model(&order).Updates(map[string]any{
+			"status":   models.OrderExpired,
+			"trade_no": tradeNo,
+		}).Error; err != nil {
+			tx.Rollback()
+			return nil, false, err
+		}
+		if err := tx.Commit().Error; err != nil {
+			return nil, false, err
+		}
+		order.Status = models.OrderExpired
+		order.TradeNo = tradeNo
+		slog.Warn("[支付] 订单已过期，跳过授权生成", "orderNo", order.OrderNo, "tradeNo", tradeNo)
 		return &order, false, nil
 	}
 

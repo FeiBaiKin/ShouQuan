@@ -145,11 +145,13 @@ export interface PurchaseOrder {
 
 export interface CreateOrderResult {
   order_no: string
+  access_token: string
   amount: number
   type: string // wechat / alipay
   scene: string // native / page / wap / precreate
   pay_url: string
   qr_code: string
+  expires_at: number
 }
 
 export interface PaymentMethod {

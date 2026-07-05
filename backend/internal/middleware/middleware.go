@@ -7,12 +7,14 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 
+	"authcenter/backend/internal/models"
 	"authcenter/backend/internal/util"
 )
 
 // AdminAuth 管理后台鉴权：Authorization: Bearer <JWT>
-func AdminAuth(jwtSecret string) gin.HandlerFunc {
+func AdminAuth(jwtSecret string, db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		header := c.GetHeader("Authorization")
 		if !strings.HasPrefix(header, "Bearer ") {
@@ -24,8 +26,18 @@ func AdminAuth(jwtSecret string) gin.HandlerFunc {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "登录已失效"})
 			return
 		}
-		c.Set("adminID", claims.AdminID)
-		c.Set("adminUsername", claims.Username)
+		var admin models.Admin
+		if err := db.First(&admin, claims.AdminID).Error; err != nil {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "账号不存在"})
+			return
+		}
+		if admin.MustChangePassword && c.Request.URL.Path != "/api/admin/profile" && c.Request.URL.Path != "/api/admin/password" {
+			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "首次登录请先修改密码", "must_change_password": true})
+			return
+		}
+		c.Set("adminID", admin.ID)
+		c.Set("adminUsername", admin.Username)
+		c.Set("mustChangePassword", admin.MustChangePassword)
 		c.Next()
 	}
 }
@@ -38,10 +50,10 @@ func CORS(allowed []string) gin.HandlerFunc {
 	}
 	return func(c *gin.Context) {
 		origin := strings.ToLower(c.GetHeader("Origin"))
-		if origin != "" && (allowedSet[origin] || len(allowedSet) == 0) {
+		if origin != "" && allowedSet[origin] {
 			c.Header("Access-Control-Allow-Origin", c.GetHeader("Origin"))
 			c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-			c.Header("Access-Control-Allow-Headers", "Content-Type, Authorization")
+			c.Header("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Order-Token")
 			c.Header("Access-Control-Max-Age", "86400")
 		}
 		if c.Request.Method == http.MethodOptions {

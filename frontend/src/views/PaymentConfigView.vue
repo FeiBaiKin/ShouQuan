@@ -139,6 +139,12 @@ async function testEmail() {
               <n-form-item label="商户私钥（PEM）">
                 <n-input v-model:value="payment.payment_wx_private_key" type="textarea" :rows="5" placeholder="-----BEGIN PRIVATE KEY-----&#10;...&#10;-----END PRIVATE KEY-----" />
               </n-form-item>
+              <n-form-item label="平台证书序列号">
+                <n-input v-model:value="payment.payment_wx_platform_serial_no" />
+              </n-form-item>
+              <n-form-item label="平台公钥或平台证书（PEM）">
+                <n-input v-model:value="payment.payment_wx_platform_public_key" type="textarea" :rows="5" placeholder="-----BEGIN PUBLIC KEY-----&#10;...&#10;-----END PUBLIC KEY-----" />
+              </n-form-item>
               <n-form-item label="异步通知 URL（留空则自动拼接）">
                 <n-input v-model:value="payment.payment_wx_notify_url" placeholder="https://auth.example.com/api/payment/callback/wechat" />
               </n-form-item>

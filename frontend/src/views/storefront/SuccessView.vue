@@ -14,10 +14,20 @@ const copied = ref(false)
 const resendMsg = ref('')
 const resending = ref(false)
 const error = ref('')
+const accessToken = ref('')
 
 onMounted(async () => {
   try {
-    const { data } = await storefrontApi.orderStatus(orderNo)
+    const cached = sessionStorage.getItem('pay_' + orderNo)
+    if (cached) {
+      const obj = JSON.parse(cached)
+      accessToken.value = obj.access_token || ''
+    }
+    if (!accessToken.value) {
+      error.value = '订单访问令牌缺失，请查看授权邮件或从购买流程重新进入'
+      return
+    }
+    const { data } = await storefrontApi.orderStatus(orderNo, accessToken.value)
     status.value = data.status
     amount.value = data.amount
     if (data.license_code) licenseCode.value = data.license_code
@@ -48,7 +58,7 @@ async function resendEmail() {
   resending.value = true
   resendMsg.value = ''
   try {
-    const { data } = await storefrontApi.resendEmail(orderNo)
+    const { data } = await storefrontApi.resendEmail(orderNo, accessToken.value)
     resendMsg.value = data.message || '邮件已发送'
   } catch (e: any) {
     resendMsg.value = e.response?.data?.error || extractError(e)

@@ -62,6 +62,10 @@ func CreatePlan(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "参数不完整"})
 		return
 	}
+	if req.Price <= 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "套餐价格需大于 0"})
+		return
+	}
 	switch req.DurationType {
 	case models.DurationYearly:
 		req.DurationDays = 365
@@ -122,6 +126,10 @@ func UpdatePlan(c *gin.Context) {
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "参数不完整"})
+		return
+	}
+	if req.Price <= 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "套餐价格需大于 0"})
 		return
 	}
 	switch req.DurationType {

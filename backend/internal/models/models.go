@@ -4,11 +4,12 @@ import "time"
 
 // Admin 管理员（单账号体系，首次启动按配置种子创建）
 type Admin struct {
-	ID        uint      `gorm:"primaryKey" json:"id"`
-	Username  string    `gorm:"size:64;uniqueIndex;not null" json:"username"`
-	Password  string    `gorm:"size:128;not null" json:"-"` // bcrypt
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	ID                 uint      `gorm:"primaryKey" json:"id"`
+	Username           string    `gorm:"size:64;uniqueIndex;not null" json:"username"`
+	Password           string    `gorm:"size:128;not null" json:"-"` // bcrypt
+	MustChangePassword bool      `gorm:"not null;default:false" json:"must_change_password"`
+	CreatedAt          time.Time `json:"created_at"`
+	UpdatedAt          time.Time `json:"updated_at"`
 }
 
 func (Admin) TableName() string { return "admins" }
@@ -182,25 +183,26 @@ func (PricingPlan) TableName() string { return "pricing_plans" }
 
 // PurchaseOrder 购买订单：用户在前台下单购买授权
 type PurchaseOrder struct {
-	ID            uint       `gorm:"primaryKey" json:"id"`
-	OrderNo       string     `gorm:"size:32;uniqueIndex;not null" json:"order_no"`
-	ProductID     uint       `gorm:"index;not null" json:"product_id"`
-	Product       *Product   `gorm:"foreignKey:ProductID" json:"product,omitempty"`
-	PlanID        uint       `gorm:"index;not null" json:"plan_id"`
+	ID            uint         `gorm:"primaryKey" json:"id"`
+	OrderNo       string       `gorm:"size:32;uniqueIndex;not null" json:"order_no"`
+	AccessToken   string       `gorm:"size:64;index" json:"-"`
+	ProductID     uint         `gorm:"index;not null" json:"product_id"`
+	Product       *Product     `gorm:"foreignKey:ProductID" json:"product,omitempty"`
+	PlanID        uint         `gorm:"index;not null" json:"plan_id"`
 	Plan          *PricingPlan `gorm:"foreignKey:PlanID" json:"plan,omitempty"`
-	Email         string     `gorm:"size:128;index;not null" json:"email"`
-	CustomerName  string     `gorm:"size:128" json:"customer_name"`
-	Amount        float64    `gorm:"type:decimal(10,2);not null" json:"amount"`
-	Status        string     `gorm:"size:16;not null;default:pending;index" json:"status"`
-	PaymentMethod string     `gorm:"size:16" json:"payment_method"` // alipay / wechat
-	PaymentScene  string     `gorm:"size:16" json:"payment_scene"`  // page / wap / precreate / native
-	TradeNo       string     `gorm:"size:64" json:"trade_no"`
-	LicenseID     *uint      `gorm:"index" json:"license_id"` // 支付成功后回填
-	License       *License   `gorm:"foreignKey:LicenseID" json:"license,omitempty"`
-	PaidAt        *time.Time `json:"paid_at"`
-	ExpiresAt     *time.Time `json:"expires_at"` // 订单过期时间（pending 超时变 expired）
-	CreatedAt     time.Time  `json:"created_at"`
-	UpdatedAt     time.Time  `json:"updated_at"`
+	Email         string       `gorm:"size:128;index;not null" json:"email"`
+	CustomerName  string       `gorm:"size:128" json:"customer_name"`
+	Amount        float64      `gorm:"type:decimal(10,2);not null" json:"amount"`
+	Status        string       `gorm:"size:16;not null;default:pending;index" json:"status"`
+	PaymentMethod string       `gorm:"size:16" json:"payment_method"` // alipay / wechat
+	PaymentScene  string       `gorm:"size:16" json:"payment_scene"`  // page / wap / precreate / native
+	TradeNo       string       `gorm:"size:64" json:"trade_no"`
+	LicenseID     *uint        `gorm:"index" json:"license_id"` // 支付成功后回填
+	License       *License     `gorm:"foreignKey:LicenseID" json:"license,omitempty"`
+	PaidAt        *time.Time   `json:"paid_at"`
+	ExpiresAt     *time.Time   `json:"expires_at"` // 订单过期时间（pending 超时变 expired）
+	CreatedAt     time.Time    `json:"created_at"`
+	UpdatedAt     time.Time    `json:"updated_at"`
 }
 
 func (PurchaseOrder) TableName() string { return "purchase_orders" }

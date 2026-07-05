@@ -2,6 +2,7 @@ package handler
 
 import (
 	"crypto/rand"
+	"crypto/subtle"
 	"encoding/hex"
 	"fmt"
 	"io"
@@ -25,7 +26,8 @@ import (
 // StorefrontProduct 前台产品列表项（产品 + 启用套餐）
 type StorefrontProduct struct {
 	models.Product
-	Plans []models.PricingPlan `json:"plans"`
+	Plans         []models.PricingPlan `json:"plans"`
+	LatestVersion string               `json:"latest_version"`
 }
 
 // StorefrontListProducts GET /api/storefront/products
@@ -44,18 +46,11 @@ func StorefrontListProducts(c *gin.Context) {
 		if len(plans) == 0 {
 			continue // 无套餐的产品不在前台展示
 		}
-		// 附最新已发布版本号
-		type storeRow struct {
-			models.Product
-			Plans          []models.PricingPlan `json:"plans"`
-			LatestVersion  string               `json:"latest_version"`
-		}
-		row := storeRow{Product: p, Plans: plans}
+		row := StorefrontProduct{Product: p, Plans: plans}
 		if latest := latestPublishedRelease(a, p.ID); latest != nil {
 			row.LatestVersion = latest.Version
 		}
-		result = append(result, StorefrontProduct{Product: p, Plans: plans})
-		_ = row
+		result = append(result, row)
 	}
 	c.JSON(http.StatusOK, result)
 }
@@ -74,8 +69,8 @@ func StorefrontGetProduct(c *gin.Context) {
 		_ = latest
 	}
 	c.JSON(http.StatusOK, gin.H{
-		"product":        product,
-		"plans":          plans,
+		"product": product,
+		"plans":   plans,
 		"latest_version": func() string {
 			if r := latestPublishedRelease(a, product.ID); r != nil {
 				return r.Version
@@ -148,12 +143,22 @@ func StorefrontCreateOrder(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "产品不存在"})
 		return
 	}
+	if plan.Price <= 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "套餐价格异常"})
+		return
+	}
 
 	// 生成订单号 + 写入订单
 	orderNo := generateOrderNo()
+	accessToken, err := utilGenerateOrderToken()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "生成订单访问令牌失败"})
+		return
+	}
 	subject := fmt.Sprintf("%s %s 授权", plan.Product.Name, plan.Name)
 	order := models.PurchaseOrder{
 		OrderNo:       orderNo,
+		AccessToken:   accessToken,
 		ProductID:     plan.ProductID,
 		PlanID:        plan.ID,
 		Email:         req.Email,
@@ -193,12 +198,14 @@ func StorefrontCreateOrder(c *gin.Context) {
 	a.DB.Model(&order).Update("payment_scene", result.Scene)
 
 	c.JSON(http.StatusOK, gin.H{
-		"order_no": orderNo,
-		"amount":   plan.Price,
-		"type":     result.Type,
-		"scene":    result.Scene,
-		"pay_url":  result.PayUrl,
-		"qr_code":  result.QRCode,
+		"order_no":     orderNo,
+		"access_token": accessToken,
+		"amount":       plan.Price,
+		"type":         result.Type,
+		"scene":        result.Scene,
+		"pay_url":      result.PayUrl,
+		"qr_code":      result.QRCode,
+		"expires_at":   expiresAt.Unix(),
 	})
 }
 
@@ -217,17 +224,18 @@ func defaultScene(method string, cfg payment.PaymentConfig) string {
 // 轮询用：返回订单状态；paid 时附带授权码
 func StorefrontOrderStatus(c *gin.Context) {
 	a := getApp(c)
-	var order models.PurchaseOrder
-	if err := a.DB.Where("order_no = ?", c.Param("orderNo")).First(&order).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "订单不存在"})
+	order, ok := loadStorefrontOrder(c, a)
+	if !ok {
 		return
 	}
+	refreshOrderExpiry(a, order)
 	resp := gin.H{
 		"order_no":       order.OrderNo,
 		"amount":         order.Amount,
 		"status":         order.Status,
 		"payment_method": order.PaymentMethod,
 		"paid_at":        order.PaidAt,
+		"expires_at":     order.ExpiresAt,
 	}
 	if order.Status == models.OrderPaid && order.LicenseID != nil {
 		var license models.License
@@ -242,9 +250,8 @@ func StorefrontOrderStatus(c *gin.Context) {
 // 重新发送授权码邮件（仅 paid 订单）
 func StorefrontResendEmail(c *gin.Context) {
 	a := getApp(c)
-	var order models.PurchaseOrder
-	if err := a.DB.Preload("Plan.Product").Preload("License").Where("order_no = ?", c.Param("orderNo")).First(&order).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "订单不存在"})
+	order, ok := loadStorefrontOrder(c, a, "Plan.Product", "License")
+	if !ok {
 		return
 	}
 	if order.Status != models.OrderPaid || order.LicenseID == nil || order.License == nil {
@@ -284,6 +291,12 @@ func PaymentCallbackWechat(c *gin.Context) {
 	result, err := provider.VerifyCallback(payment.CallbackRequest{
 		Method: c.Request.Method,
 		Body:   body,
+		Headers: map[string]string{
+			"Wechatpay-Signature": c.GetHeader("Wechatpay-Signature"),
+			"Wechatpay-Timestamp": c.GetHeader("Wechatpay-Timestamp"),
+			"Wechatpay-Nonce":     c.GetHeader("Wechatpay-Nonce"),
+			"Wechatpay-Serial":    c.GetHeader("Wechatpay-Serial"),
+		},
 	}, cfg)
 	if err != nil {
 		slog.Error("[微信回调] 验签异常", "err", err)
@@ -422,4 +435,49 @@ func generateOrderNo() string {
 	b := make([]byte, 3)
 	rand.Read(b)
 	return fmt.Sprintf("L%d%s", time.Now().UnixMilli(), hex.EncodeToString(b))
+}
+
+func utilGenerateOrderToken() (string, error) {
+	b := make([]byte, 32)
+	if _, err := rand.Read(b); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(b), nil
+}
+
+func orderAccessToken(c *gin.Context) string {
+	if token := strings.TrimSpace(c.GetHeader("X-Order-Token")); token != "" {
+		return token
+	}
+	return strings.TrimSpace(c.Query("token"))
+}
+
+func loadStorefrontOrder(c *gin.Context, a *app.App, preloads ...string) (*models.PurchaseOrder, bool) {
+	var order models.PurchaseOrder
+	query := a.DB
+	for _, preload := range preloads {
+		query = query.Preload(preload)
+	}
+	if err := query.Where("order_no = ?", c.Param("orderNo")).First(&order).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "订单不存在"})
+		return nil, false
+	}
+	token := orderAccessToken(c)
+	if order.AccessToken == "" || token == "" || subtle.ConstantTimeCompare([]byte(token), []byte(order.AccessToken)) != 1 {
+		c.JSON(http.StatusForbidden, gin.H{"error": "订单访问令牌无效"})
+		return nil, false
+	}
+	return &order, true
+}
+
+func refreshOrderExpiry(a *app.App, order *models.PurchaseOrder) {
+	if order.Status != models.OrderPending || order.ExpiresAt == nil || !time.Now().After(*order.ExpiresAt) {
+		return
+	}
+	res := a.DB.Model(&models.PurchaseOrder{}).
+		Where("id = ? AND status = ?", order.ID, models.OrderPending).
+		Update("status", models.OrderExpired)
+	if res.Error == nil && res.RowsAffected > 0 {
+		order.Status = models.OrderExpired
+	}
 }

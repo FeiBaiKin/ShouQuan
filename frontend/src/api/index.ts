@@ -30,7 +30,13 @@ api.interceptors.response.use(
     if (err.response?.status === 401 && !location.pathname.startsWith('/admin/login')) {
       localStorage.removeItem('token')
       localStorage.removeItem('username')
+      localStorage.removeItem('must_change_password')
       location.href = '/admin/login'
+    } else if (err.response?.status === 403 && err.response?.data?.must_change_password) {
+      localStorage.setItem('must_change_password', 'true')
+      if (!location.pathname.startsWith('/admin/change-password')) {
+        location.href = '/admin/change-password'
+      }
     }
     return Promise.reject(err)
   },
@@ -45,8 +51,8 @@ export function extractError(err: unknown): string {
 
 export const authApi = {
   login: (username: string, password: string) =>
-    api.post<{ token: string; username: string }>('/admin/login', { username, password }),
-  profile: () => api.get<{ username: string }>('/admin/profile'),
+    api.post<{ token: string; username: string; must_change_password: boolean }>('/admin/login', { username, password }),
+  profile: () => api.get<{ username: string; must_change_password: boolean }>('/admin/profile'),
   changePassword: (oldPassword: string, newPassword: string) =>
     api.put('/admin/password', { old_password: oldPassword, new_password: newPassword }),
 }
@@ -170,9 +176,11 @@ export const storefrontApi = {
   paymentMethods: () => store.get<{ methods: PaymentMethod[] }>('/payment-methods'),
   createOrder: (data: { plan_id: number; email: string; customer_name?: string; payment_method: string; scene?: string }) =>
     store.post<CreateOrderResult>('/orders', data),
-  orderStatus: (orderNo: string) =>
-    store.get<{ order_no: string; amount: number; status: string; payment_method: string; paid_at: string | null; license_code?: string }>(
+  orderStatus: (orderNo: string, accessToken: string) =>
+    store.get<{ order_no: string; amount: number; status: string; payment_method: string; paid_at: string | null; expires_at: string | null; license_code?: string }>(
       `/orders/${orderNo}`,
+      { headers: { 'X-Order-Token': accessToken } },
     ),
-  resendEmail: (orderNo: string) => store.post(`/orders/${orderNo}/resend-email`),
+  resendEmail: (orderNo: string, accessToken: string) =>
+    store.post(`/orders/${orderNo}/resend-email`, null, { headers: { 'X-Order-Token': accessToken } }),
 }

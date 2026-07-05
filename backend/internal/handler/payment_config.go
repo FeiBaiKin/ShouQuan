@@ -1,26 +1,32 @@
 package handler
 
 import (
+	"errors"
 	"log/slog"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 
 	"authcenter/backend/internal/models"
 	"authcenter/backend/internal/service"
 )
+
+const secretMask = "********"
 
 // 支付配置 key 白名单（写入 settings 表时只允许这些 key）
 var paymentConfigKeys = map[string]bool{
 	"payment_site_url":          true,
 	"payment_enabled_providers": true,
 	// 微信
-	"payment_wx_appid":      true,
-	"payment_wx_mchid":      true,
-	"payment_wx_serial_no":  true,
-	"payment_wx_api_v3_key": true,
-	"payment_wx_private_key": true,
-	"payment_wx_notify_url": true,
+	"payment_wx_appid":               true,
+	"payment_wx_mchid":               true,
+	"payment_wx_serial_no":           true,
+	"payment_wx_api_v3_key":          true,
+	"payment_wx_private_key":         true,
+	"payment_wx_platform_serial_no":  true,
+	"payment_wx_platform_public_key": true,
+	"payment_wx_notify_url":          true,
 	// 支付宝
 	"payment_ali_appid":       true,
 	"payment_ali_private_key": true,
@@ -44,6 +50,13 @@ var siteConfigKeys = map[string]bool{
 	"site_name": true,
 }
 
+var secretConfigKeys = map[string]bool{
+	"payment_wx_api_v3_key":   true,
+	"payment_wx_private_key":  true,
+	"payment_ali_private_key": true,
+	"email_smtp_pass":         true,
+}
+
 // PaymentConfigGet GET /api/admin/payment-config
 // 返回支付配置 + 邮件配置 + 站点配置（合并返回，前端分块展示）
 func PaymentConfigGet(c *gin.Context) {
@@ -55,8 +68,14 @@ func PaymentConfigGet(c *gin.Context) {
 	siteCfg := map[string]string{}
 	for k, v := range settings {
 		if paymentConfigKeys[k] {
+			if secretConfigKeys[k] && v != "" {
+				v = secretMask
+			}
 			paymentCfg[k] = v
 		} else if emailConfigKeys[k] {
+			if secretConfigKeys[k] && v != "" {
+				v = secretMask
+			}
 			emailCfg[k] = v
 		} else if siteConfigKeys[k] {
 			siteCfg[k] = v
@@ -90,11 +109,17 @@ func PaymentConfigPut(c *gin.Context) {
 	updates := map[string]string{}
 	for k, v := range req.Payment {
 		if paymentConfigKeys[k] {
+			if secretConfigKeys[k] && v == secretMask {
+				continue
+			}
 			updates[k] = v
 		}
 	}
 	for k, v := range req.Email {
 		if emailConfigKeys[k] {
+			if secretConfigKeys[k] && v == secretMask {
+				continue
+			}
 			updates[k] = v
 		}
 	}
@@ -107,10 +132,19 @@ func PaymentConfigPut(c *gin.Context) {
 	for k, v := range updates {
 		var s models.Setting
 		if err := a.DB.Where("setting_key = ?", k).First(&s).Error; err != nil {
-			// 不存在则创建
-			a.DB.Create(&models.Setting{Key: k, Value: v})
+			if !errors.Is(err, gorm.ErrRecordNotFound) {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "保存失败"})
+				return
+			}
+			if err := a.DB.Create(&models.Setting{Key: k, Value: v}).Error; err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "保存失败"})
+				return
+			}
 		} else {
-			a.DB.Model(&s).Update("value", v)
+			if err := a.DB.Model(&s).Update("value", v).Error; err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "保存失败"})
+				return
+			}
 		}
 	}
 	a.InvalidateSettings()

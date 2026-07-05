@@ -39,6 +39,7 @@ const router = createRouter({
         { path: 'releases', name: 'releases', component: () => import('@/views/ReleasesView.vue') },
         { path: 'payment', name: 'payment-config', component: () => import('@/views/PaymentConfigView.vue') },
         { path: 'settings', name: 'settings', component: () => import('@/views/SettingsView.vue') },
+        { path: 'change-password', name: 'change-password', component: () => import('@/views/ChangePasswordView.vue') },
       ],
     },
 
@@ -53,7 +54,13 @@ router.beforeEach((to) => {
   if (isAdminRoute && !auth.token) {
     return { name: 'login', query: { redirect: to.fullPath } }
   }
+  if (isAdminRoute && auth.mustChangePassword && to.name !== 'change-password') {
+    return { name: 'change-password' }
+  }
   if (to.name === 'login' && auth.token) {
+    if (auth.mustChangePassword) {
+      return { name: 'change-password' }
+    }
     return { name: 'dashboard' }
   }
 })

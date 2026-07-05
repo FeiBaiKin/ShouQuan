@@ -35,12 +35,19 @@ func AdminLogin(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "生成会话失败"})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"token": token, "username": admin.Username})
+	c.JSON(http.StatusOK, gin.H{
+		"token":                token,
+		"username":             admin.Username,
+		"must_change_password": admin.MustChangePassword,
+	})
 }
 
 // AdminProfile GET /api/admin/profile
 func AdminProfile(c *gin.Context) {
-	c.JSON(http.StatusOK, gin.H{"username": c.GetString("adminUsername")})
+	c.JSON(http.StatusOK, gin.H{
+		"username":             c.GetString("adminUsername"),
+		"must_change_password": c.GetBool("mustChangePassword"),
+	})
 }
 
 // ChangePassword PUT /api/admin/password
@@ -64,12 +71,19 @@ func ChangePassword(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "原密码错误"})
 		return
 	}
+	if bcrypt.CompareHashAndPassword([]byte(admin.Password), []byte(req.NewPassword)) == nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "新密码不能与原密码相同"})
+		return
+	}
 	hash, err := bcrypt.GenerateFromPassword([]byte(req.NewPassword), bcrypt.DefaultCost)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "密码加密失败"})
 		return
 	}
-	if err := a.DB.Model(&admin).Update("password", string(hash)).Error; err != nil {
+	if err := a.DB.Model(&admin).Updates(map[string]any{
+		"password":             string(hash),
+		"must_change_password": false,
+	}).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "保存失败"})
 		return
 	}

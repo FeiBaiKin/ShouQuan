@@ -85,10 +85,15 @@ const menuOptions: MenuOption[] = [
 
 const activeKey = computed(() => (route.name as string) ?? 'dashboard')
 
-const userOptions = [{ label: '退出登录', key: 'logout' }]
+const userOptions = [
+  { label: '修改密码', key: 'change-password' },
+  { label: '退出登录', key: 'logout' },
+]
 
 function onUserAction(key: string) {
-  if (key === 'logout') {
+  if (key === 'change-password') {
+    router.push({ name: 'change-password' })
+  } else if (key === 'logout') {
     auth.logout()
     router.push({ name: 'login' })
   }

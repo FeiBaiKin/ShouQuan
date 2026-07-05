@@ -18,13 +18,34 @@ const licenseCode = ref('')
 const copied = ref(false)
 const error = ref('')
 const loading = ref(true)
+const accessToken = ref('')
 
 let pollTimer: ReturnType<typeof setInterval> | null = null
 
 onMounted(async () => {
+  const cached = sessionStorage.getItem('pay_' + orderNo)
+  if (cached) {
+    try {
+      const obj = JSON.parse(cached)
+      accessToken.value = obj.access_token || ''
+      payUrl.value = obj.qr_code || obj.pay_url || ''
+      orderScene.value = obj.scene || ''
+      if (payUrl.value) {
+        qrDataUrl.value = await QRCode.toDataURL(payUrl.value, { width: 220, margin: 1 })
+      }
+    } catch {
+      // ignore
+    }
+  }
+  if (!accessToken.value) {
+    error.value = '订单访问令牌缺失，请从购买流程重新进入或查看授权邮件'
+    loading.value = false
+    return
+  }
+
   // 先查订单拿到支付参数快照，再轮询状态
   try {
-    const { data } = await storefrontApi.orderStatus(orderNo)
+    const { data } = await storefrontApi.orderStatus(orderNo, accessToken.value)
     amount.value = data.amount
     orderType.value = data.payment_method
     status.value = data.status
@@ -39,22 +60,6 @@ onMounted(async () => {
     return
   }
 
-  // 获取二维码：重新下单不可行（会创建新订单），故本页依赖跳转前已生成的二维码参数。
-  // 支付宝 page 场景不会进入此页（已在 BuyView 跳转），进入此页的都是二维码场景。
-  // 二维码内容需从 sessionStorage 取（BuyView 创建订单后存入）。
-  const cached = sessionStorage.getItem('pay_' + orderNo)
-  if (cached) {
-    try {
-      const obj = JSON.parse(cached)
-      payUrl.value = obj.qr_code || obj.pay_url || ''
-      orderScene.value = obj.scene || ''
-      if (payUrl.value) {
-        qrDataUrl.value = await QRCode.toDataURL(payUrl.value, { width: 220, margin: 1 })
-      }
-    } catch {
-      // ignore
-    }
-  }
   loading.value = false
   startPolling()
 })
@@ -63,7 +68,7 @@ function startPolling() {
   if (pollTimer) return
   pollTimer = setInterval(async () => {
     try {
-      const { data } = await storefrontApi.orderStatus(orderNo)
+      const { data } = await storefrontApi.orderStatus(orderNo, accessToken.value)
       status.value = data.status
       if (data.status === 'paid') {
         if (data.license_code) licenseCode.value = data.license_code

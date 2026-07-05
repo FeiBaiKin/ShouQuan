@@ -61,17 +61,24 @@ async function submit() {
       customer_name: customerName.value,
       payment_method: paymentMethod.value,
     })
-    // 支付宝 page 场景：跳转到支付宝收银台
-    if (data.type === 'alipay' && data.scene === 'page') {
+    sessionStorage.setItem(
+      'pay_' + data.order_no,
+      JSON.stringify({
+        access_token: data.access_token,
+        qr_code: data.qr_code,
+        pay_url: data.pay_url,
+        scene: data.scene,
+        type: data.type,
+        expires_at: data.expires_at,
+      }),
+    )
+    // 支付宝 page / wap 场景：跳转到支付宝收银台
+    if (data.type === 'alipay' && (data.scene === 'page' || data.scene === 'wap')) {
       window.location.href = data.pay_url
       return
     }
     // 其余场景（微信 native / 支付宝 precreate）：跳到支付页展示二维码
     // 先把支付参数缓存到 sessionStorage，供 PayView 渲染二维码
-    sessionStorage.setItem(
-      'pay_' + data.order_no,
-      JSON.stringify({ qr_code: data.qr_code, pay_url: data.pay_url, scene: data.scene, type: data.type }),
-    )
     router.push({ name: 'pay', params: { orderNo: data.order_no } })
   } catch (e) {
     error.value = extractError(e)

@@ -16,6 +16,7 @@ import (
 	"log/slog"
 	"math"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -78,8 +79,11 @@ func (WechatProvider) CreatePayment(order Order, cfg PaymentConfig, scene string
 }
 
 func (WechatProvider) VerifyCallback(req CallbackRequest, cfg PaymentConfig) (CallbackResult, error) {
-	if cfg.WxApiV3Key == "" {
-		return CallbackResult{Skip: true, Error: "微信支付配置不完整"}, nil
+	if cfg.WxApiV3Key == "" || cfg.WxPlatformPublicKey == "" {
+		return CallbackResult{Verified: false, Error: "微信支付配置不完整"}, nil
+	}
+	if !verifyWechatCallbackSignature(req, cfg) {
+		return CallbackResult{Verified: false, Error: "微信回调签名验证失败"}, nil
 	}
 
 	// 微信 V3 回调 JSON 结构：{ resource: { algorithm, ciphertext, associated_data, nonce, original_type } }
@@ -150,6 +154,86 @@ func decryptAES256GCM(ciphertextB64, key, nonce, associatedData string) ([]byte,
 		return nil, err
 	}
 	return gcm.Open(nil, []byte(nonce), ciphertext, []byte(associatedData))
+}
+
+func verifyWechatCallbackSignature(req CallbackRequest, cfg PaymentConfig) bool {
+	signature := callbackHeader(req.Headers, "Wechatpay-Signature")
+	timestamp := callbackHeader(req.Headers, "Wechatpay-Timestamp")
+	nonce := callbackHeader(req.Headers, "Wechatpay-Nonce")
+	serial := callbackHeader(req.Headers, "Wechatpay-Serial")
+	if signature == "" || timestamp == "" || nonce == "" || serial == "" {
+		slog.Error("[微信支付] 回调签名头缺失")
+		return false
+	}
+	if cfg.WxPlatformSerialNo != "" && serial != cfg.WxPlatformSerialNo {
+		slog.Error("[微信支付] 回调平台证书序列号不匹配", "got", serial)
+		return false
+	}
+	unix, err := strconv.ParseInt(timestamp, 10, 64)
+	if err != nil || math.Abs(time.Since(time.Unix(unix, 0)).Seconds()) > 300 {
+		slog.Error("[微信支付] 回调时间戳无效", "timestamp", timestamp)
+		return false
+	}
+	pub, err := parseWechatPlatformPublicKey(cfg.WxPlatformPublicKey)
+	if err != nil {
+		slog.Error("[微信支付] 平台公钥解析失败", "err", err)
+		return false
+	}
+	sig, err := base64.StdEncoding.DecodeString(signature)
+	if err != nil {
+		slog.Error("[微信支付] 回调签名 base64 解码失败", "err", err)
+		return false
+	}
+	message := timestamp + "\n" + nonce + "\n" + string(req.Body) + "\n"
+	digest := sha256.Sum256([]byte(message))
+	if err := rsa.VerifyPKCS1v15(pub, crypto.SHA256, digest[:], sig); err != nil {
+		slog.Error("[微信支付] 回调签名验证失败", "err", err)
+		return false
+	}
+	return true
+}
+
+func callbackHeader(headers map[string]string, key string) string {
+	for k, v := range headers {
+		if strings.EqualFold(k, key) {
+			return strings.TrimSpace(v)
+		}
+	}
+	return ""
+}
+
+func parseWechatPlatformPublicKey(raw string) (*rsa.PublicKey, error) {
+	s := strings.ReplaceAll(raw, "\\n", "\n")
+	if !strings.Contains(s, "-----BEGIN") {
+		s = fixPEM(s, "PUBLIC KEY")
+	}
+	block, _ := pem.Decode([]byte(s))
+	if block == nil {
+		return nil, fmt.Errorf("无法解析平台公钥")
+	}
+	if block.Type == "CERTIFICATE" {
+		cert, err := x509.ParseCertificate(block.Bytes)
+		if err != nil {
+			return nil, err
+		}
+		pub, ok := cert.PublicKey.(*rsa.PublicKey)
+		if !ok {
+			return nil, fmt.Errorf("平台证书公钥不是 RSA")
+		}
+		return pub, nil
+	}
+	if block.Type == "RSA PUBLIC KEY" {
+		return x509.ParsePKCS1PublicKey(block.Bytes)
+	}
+	pubAny, err := x509.ParsePKIXPublicKey(block.Bytes)
+	if err != nil {
+		return nil, err
+	}
+	pub, ok := pubAny.(*rsa.PublicKey)
+	if !ok {
+		return nil, fmt.Errorf("平台公钥不是 RSA")
+	}
+	return pub, nil
 }
 
 func signRSA(data, privateKeyPEM string) (string, error) {

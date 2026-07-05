@@ -23,6 +23,10 @@ async function submit() {
   loading.value = true
   try {
     await auth.login(username.value, password.value)
+    if (auth.mustChangePassword) {
+      router.push({ name: 'change-password' })
+      return
+    }
     router.push((route.query.redirect as string) ?? '/admin')
   } catch (err) {
     message.error(extractError(err))

@@ -60,7 +60,7 @@ func Setup(a *app.App) *gin.Engine {
 	{
 		admin.POST("/login", middleware.RateLimit("login", 10, time.Minute), handler.AdminLogin)
 
-		authed := admin.Group("", middleware.AdminAuth(a.Cfg.JWT.Secret))
+		authed := admin.Group("", middleware.AdminAuth(a.Cfg.JWT.Secret, a.DB))
 		{
 			authed.GET("/profile", handler.AdminProfile)
 			authed.PUT("/password", handler.ChangePassword)
