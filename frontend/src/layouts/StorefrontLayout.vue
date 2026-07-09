@@ -3,7 +3,7 @@ import { inject, type Ref } from 'vue'
 import { RouterLink, RouterView } from 'vue-router'
 import { useRoute } from 'vue-router'
 import { NIcon } from 'naive-ui'
-import { Sun, Moon } from '@vicons/tabler'
+import { Sun, Moon, ExternalLink } from '@vicons/tabler'
 
 const route = useRoute()
 const isDark = inject<Ref<boolean>>('isDark')!
@@ -26,6 +26,15 @@ const isDark = inject<Ref<boolean>>('isDark')!
           >
             首页
           </RouterLink>
+          <a
+            href="https://home.xzji.top"
+            target="_blank"
+            rel="noopener"
+            class="inline-flex items-center gap-1 px-3 py-1.5 rounded-md text-zinc-600 dark:text-zinc-400 transition-colors hover:bg-zinc-100 dark:hover:bg-zinc-900"
+          >
+            演示站点
+            <NIcon :component="ExternalLink" size="14" class="text-zinc-400 dark:text-zinc-500" />
+          </a>
           <button
             @click="isDark = !isDark"
             class="inline-flex h-9 w-9 items-center justify-center rounded-md text-zinc-500 dark:text-zinc-400 transition hover:bg-zinc-100 dark:hover:bg-zinc-900 hover:text-zinc-900 dark:hover:text-zinc-100 active:scale-[0.95]"
