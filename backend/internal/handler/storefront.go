@@ -10,10 +10,13 @@ import (
 	"net/http"
 	"net/mail"
 	"net/url"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 
 	"authcenter/backend/internal/app"
 	"authcenter/backend/internal/models"
@@ -242,8 +245,40 @@ func StorefrontOrderStatus(c *gin.Context) {
 		if err := a.DB.First(&license, *order.LicenseID).Error; err == nil {
 			resp["license_code"] = license.Code
 		}
+		// 附带最新已发布版本信息，供前台展示「下载部署包」按钮（下载链接不外露）
+		if latest := latestPublishedRelease(a, order.ProductID); latest != nil {
+			resp["latest_version"] = latest.Version
+			resp["file_size"] = latest.FileSize
+		}
 	}
 	c.JSON(http.StatusOK, resp)
+}
+
+// StorefrontDownloadRelease GET /api/storefront/orders/:orderNo/download
+// 凭订单访问令牌下载该产品最新已发布部署包（仅 paid 订单）。
+// 直接回传文件流，不向前端暴露真实存储路径 / release id。
+func StorefrontDownloadRelease(c *gin.Context) {
+	a := getApp(c)
+	order, ok := loadStorefrontOrder(c, a)
+	if !ok {
+		return
+	}
+	if order.Status != models.OrderPaid {
+		c.JSON(http.StatusForbidden, gin.H{"error": "订单未支付，无法下载"})
+		return
+	}
+	release := latestPublishedRelease(a, order.ProductID)
+	if release == nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "暂无可用部署包"})
+		return
+	}
+	path := filepath.Join(a.Cfg.ReleaseDir, release.FileName)
+	if _, err := os.Stat(path); err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "部署包文件缺失"})
+		return
+	}
+	a.DB.Model(release).UpdateColumn("downloads", gorm.Expr("downloads + 1"))
+	c.FileAttachment(path, release.OriginalName)
 }
 
 // StorefrontResendEmail POST /api/storefront/orders/:orderNo/resend-email

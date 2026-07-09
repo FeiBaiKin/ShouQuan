@@ -44,6 +44,7 @@ func Setup(a *app.App) *gin.Engine {
 		storefront.GET("/payment-methods", handler.StorefrontPaymentMethods)
 		storefront.POST("/orders", handler.StorefrontCreateOrder)
 		storefront.GET("/orders/:orderNo", handler.StorefrontOrderStatus)
+		storefront.GET("/orders/:orderNo/download", handler.StorefrontDownloadRelease)
 		storefront.POST("/orders/:orderNo/resend-email", handler.StorefrontResendEmail)
 	}
 

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
-import { storefrontApi, extractError } from '@/api'
+import { storefrontApi, extractError, extractBlobError } from '@/api'
 
 const route = useRoute()
 const orderNo = route.params.orderNo as string
@@ -15,6 +15,9 @@ const resendMsg = ref('')
 const resending = ref(false)
 const error = ref('')
 const accessToken = ref('')
+const latestVersion = ref('')
+const downloading = ref(false)
+const downloadError = ref('')
 
 onMounted(async () => {
   try {
@@ -31,6 +34,7 @@ onMounted(async () => {
     status.value = data.status
     amount.value = data.amount
     if (data.license_code) licenseCode.value = data.license_code
+    if (data.latest_version) latestVersion.value = data.latest_version
   } catch (e) {
     error.value = extractError(e)
   } finally {
@@ -52,6 +56,31 @@ async function copyCode() {
   }
   copied.value = true
   setTimeout(() => (copied.value = false), 2000)
+}
+
+async function downloadRelease() {
+  if (downloading.value) return
+  downloading.value = true
+  downloadError.value = ''
+  try {
+    const res = await storefrontApi.downloadRelease(orderNo, accessToken.value)
+    const disposition = res.headers['content-disposition'] || ''
+    const match = /filename\*?=(?:UTF-8'')?["']?([^"';]+)/i.exec(disposition)
+    const filename = match ? decodeURIComponent(match[1]) : `部署包-${latestVersion.value || 'latest'}`
+    const blob = res.data instanceof Blob ? res.data : new Blob([res.data])
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = filename
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    setTimeout(() => URL.revokeObjectURL(url), 4000)
+  } catch (e: any) {
+    downloadError.value = await extractBlobError(e)
+  } finally {
+    downloading.value = false
+  }
 }
 
 async function resendEmail() {
@@ -96,6 +125,23 @@ async function resendEmail() {
         >
           {{ copied ? '已复制到剪贴板' : '一键复制授权码' }}
         </button>
+      </div>
+
+      <!-- 部署包下载 -->
+      <div v-if="latestVersion" class="p-6 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 mb-6">
+        <div class="text-xs text-zinc-500 mb-1">最新版部署包</div>
+        <div class="text-sm font-medium mb-3">版本 {{ latestVersion }}</div>
+        <button
+          @click="downloadRelease"
+          :disabled="downloading"
+          class="w-full inline-flex items-center justify-center gap-2 py-2.5 rounded-md bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-zinc-200 text-white dark:text-zinc-900 text-sm font-medium transition-colors disabled:opacity-60"
+        >
+          <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v12m0 0l-4-4m4 4l4-4M4 20h16" />
+          </svg>
+          {{ downloading ? '准备下载...' : '下载最新版部署包' }}
+        </button>
+        <p v-if="downloadError" class="mt-2 text-xs text-red-500">{{ downloadError }}</p>
       </div>
 
       <!-- 激活指引 -->

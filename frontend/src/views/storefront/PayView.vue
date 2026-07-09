@@ -2,7 +2,7 @@
 import { onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import QRCode from 'qrcode'
-import { storefrontApi, extractError } from '@/api'
+import { storefrontApi, extractError, extractBlobError } from '@/api'
 
 const route = useRoute()
 const router = useRouter()
@@ -19,6 +19,9 @@ const copied = ref(false)
 const error = ref('')
 const loading = ref(true)
 const accessToken = ref('')
+const latestVersion = ref('')
+const downloading = ref(false)
+const downloadError = ref('')
 
 let pollTimer: ReturnType<typeof setInterval> | null = null
 
@@ -51,6 +54,7 @@ onMounted(async () => {
     status.value = data.status
     if (data.status === 'paid' && data.license_code) {
       licenseCode.value = data.license_code
+      latestVersion.value = data.latest_version || ''
       loading.value = false
       return
     }
@@ -72,6 +76,7 @@ function startPolling() {
       status.value = data.status
       if (data.status === 'paid') {
         if (data.license_code) licenseCode.value = data.license_code
+        latestVersion.value = data.latest_version || ''
         stopPolling()
       } else if (data.status === 'expired' || data.status === 'closed') {
         stopPolling()
@@ -112,6 +117,31 @@ async function copyCode() {
 
 function goSuccess() {
   router.push({ name: 'success', params: { orderNo } })
+}
+
+async function downloadRelease() {
+  if (downloading.value) return
+  downloading.value = true
+  downloadError.value = ''
+  try {
+    const res = await storefrontApi.downloadRelease(orderNo, accessToken.value)
+    const disposition = res.headers['content-disposition'] || ''
+    const match = /filename\*?=(?:UTF-8'')?["']?([^"';]+)/i.exec(disposition)
+    const filename = match ? decodeURIComponent(match[1]) : `部署包-${latestVersion.value || 'latest'}`
+    const blob = res.data instanceof Blob ? res.data : new Blob([res.data])
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = filename
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    setTimeout(() => URL.revokeObjectURL(url), 4000)
+  } catch (e: any) {
+    downloadError.value = await extractBlobError(e)
+  } finally {
+    downloading.value = false
+  }
 }
 
 function methodLabel(): string {
@@ -157,6 +187,21 @@ function methodLabel(): string {
           >
             查看详情
           </button>
+        </div>
+
+        <!-- 部署包下载 -->
+        <div v-if="latestVersion" class="mt-5 pt-5 border-t border-zinc-200 dark:border-zinc-800">
+          <button
+            @click="downloadRelease"
+            :disabled="downloading"
+            class="inline-flex items-center gap-2 px-5 py-2.5 rounded-md bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-zinc-200 text-white dark:text-zinc-900 text-sm font-medium transition-colors disabled:opacity-60"
+          >
+            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v12m0 0l-4-4m4 4l4-4M4 20h16" />
+            </svg>
+            {{ downloading ? '准备下载...' : `下载最新版部署包（${latestVersion}）` }}
+          </button>
+          <p v-if="downloadError" class="mt-2 text-xs text-red-500">{{ downloadError }}</p>
         </div>
       </div>
 

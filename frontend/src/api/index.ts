@@ -49,6 +49,20 @@ export function extractError(err: unknown): string {
   return String(err)
 }
 
+// blob 响应出错时，错误体本身是 Blob（JSON），需读出后再取 error 字段
+export async function extractBlobError(err: unknown): Promise<string> {
+  if (axios.isAxiosError(err) && err.response?.data instanceof Blob) {
+    try {
+      const text = await err.response.data.text()
+      const obj = JSON.parse(text)
+      if (obj?.error) return obj.error
+    } catch {
+      // 落回通用处理
+    }
+  }
+  return extractError(err)
+}
+
 export const authApi = {
   login: (username: string, password: string) =>
     api.post<{ token: string; username: string; must_change_password: boolean }>('/admin/login', { username, password }),
@@ -177,10 +191,15 @@ export const storefrontApi = {
   createOrder: (data: { plan_id: number; email: string; customer_name?: string; payment_method: string; scene?: string }) =>
     store.post<CreateOrderResult>('/orders', data),
   orderStatus: (orderNo: string, accessToken: string) =>
-    store.get<{ order_no: string; amount: number; status: string; payment_method: string; paid_at: string | null; expires_at: string | null; license_code?: string }>(
+    store.get<{ order_no: string; amount: number; status: string; payment_method: string; paid_at: string | null; expires_at: string | null; license_code?: string; latest_version?: string; file_size?: number }>(
       `/orders/${orderNo}`,
       { headers: { 'X-Order-Token': accessToken } },
     ),
+  downloadRelease: (orderNo: string, accessToken: string) =>
+    store.get<Blob>(`/orders/${orderNo}/download`, {
+      headers: { 'X-Order-Token': accessToken },
+      responseType: 'blob',
+    }),
   resendEmail: (orderNo: string, accessToken: string) =>
     store.post(`/orders/${orderNo}/resend-email`, null, { headers: { 'X-Order-Token': accessToken } }),
 }
