@@ -5,6 +5,7 @@ frontend/dist/
 
 # Go 编译产物
 backend/authcenter-server*
+backend/authcenter-linux-amd64
 *.test
 
 # 前端嵌入后端的拷贝（由构建脚本生成）

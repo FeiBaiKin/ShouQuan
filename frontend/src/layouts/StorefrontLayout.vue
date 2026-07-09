@@ -1,8 +1,12 @@
 <script setup lang="ts">
+import { inject, type Ref } from 'vue'
 import { RouterLink, RouterView } from 'vue-router'
 import { useRoute } from 'vue-router'
+import { NIcon } from 'naive-ui'
+import { Sun, Moon } from '@vicons/tabler'
 
 const route = useRoute()
+const isDark = inject<Ref<boolean>>('isDark')!
 </script>
 
 <template>
@@ -14,7 +18,7 @@ const route = useRoute()
           <span class="inline-block h-6 w-6 rounded-md bg-emerald-500"></span>
           <span>授权中心</span>
         </RouterLink>
-        <nav class="flex items-center gap-1 text-sm">
+        <nav class="flex items-center gap-2 text-sm">
           <RouterLink
             to="/"
             class="px-3 py-1.5 rounded-md transition-colors hover:bg-zinc-100 dark:hover:bg-zinc-900"
@@ -22,12 +26,14 @@ const route = useRoute()
           >
             首页
           </RouterLink>
-          <a
-            href="/admin"
-            class="px-3 py-1.5 rounded-md text-zinc-600 dark:text-zinc-400 transition-colors hover:bg-zinc-100 dark:hover:bg-zinc-900"
+          <button
+            @click="isDark = !isDark"
+            class="inline-flex h-9 w-9 items-center justify-center rounded-md text-zinc-500 dark:text-zinc-400 transition hover:bg-zinc-100 dark:hover:bg-zinc-900 hover:text-zinc-900 dark:hover:text-zinc-100 active:scale-[0.95]"
+            :aria-label="isDark ? '切换到浅色模式' : '切换到深色模式'"
+            :title="isDark ? '切换到浅色模式' : '切换到深色模式'"
           >
-            管理后台
-          </a>
+            <NIcon :component="isDark ? Sun : Moon" size="18" />
+          </button>
         </nav>
       </div>
     </header>
