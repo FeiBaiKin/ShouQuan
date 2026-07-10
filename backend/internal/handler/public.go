@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -39,7 +40,7 @@ type StatusResponse struct {
 	Product                string      `json:"product"`
 	Code                   string      `json:"code"`
 	Domain                 string      `json:"domain"`
-	Status                 string      `json:"status"` // active/expired/revoked/unactivated/domain_mismatch
+	Status                 string      `json:"status"`     // active/expired/revoked/unactivated/domain_mismatch
 	ExpiresAt              int64       `json:"expires_at"` // unix 秒；0 = 永久（或未激活）
 	Timestamp              int64       `json:"timestamp"`
 	LatestVersion          string      `json:"latest_version"`
@@ -54,13 +55,15 @@ type StatusResponse struct {
 // ---- 公共辅助 ----
 
 func findProductAndLicense(c *gin.Context, a *app.App, req *publicReq) (*models.Product, *models.License, bool) {
+	productSlug := strings.ToLower(strings.TrimSpace(req.Product))
+	licenseCode := strings.ToUpper(strings.TrimSpace(req.Code))
 	var product models.Product
-	if err := a.DB.Where("slug = ?", req.Product).First(&product).Error; err != nil {
+	if err := a.DB.Where("slug = ?", productSlug).First(&product).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "产品不存在"})
 		return nil, nil, false
 	}
 	var license models.License
-	if err := a.DB.Where("code = ? AND product_id = ?", req.Code, product.ID).First(&license).Error; err != nil {
+	if err := a.DB.Where("code = ? AND product_id = ?", licenseCode, product.ID).First(&license).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "授权码不存在"})
 		return nil, nil, false
 	}

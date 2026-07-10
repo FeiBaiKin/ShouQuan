@@ -6,6 +6,9 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
+	"strings"
+	"time"
 
 	"github.com/spf13/viper"
 )
@@ -16,12 +19,18 @@ type ServerConfig struct {
 }
 
 type DatabaseConfig struct {
-	Host     string `mapstructure:"host"`
-	Port     int    `mapstructure:"port"`
-	User     string `mapstructure:"user"`
-	Password string `mapstructure:"password"`
-	Name     string `mapstructure:"name"`
+	Host          string `mapstructure:"host"`
+	Port          int    `mapstructure:"port"`
+	User          string `mapstructure:"user"`
+	Password      string `mapstructure:"password"`
+	Name          string `mapstructure:"name"`
+	SSLMode       string `mapstructure:"ssl_mode"`
+	TimeZone      string `mapstructure:"timezone"`
+	MaintenanceDB string `mapstructure:"maintenance_db"`
+	AutoCreate    bool   `mapstructure:"auto_create"`
 }
+
+var postgresDatabaseNamePattern = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_-]{0,62}$`)
 
 type JWTConfig struct {
 	Secret string `mapstructure:"secret"`
@@ -44,7 +53,7 @@ type SMTPConfig struct {
 // SiteConfig 站点级配置
 type SiteConfig struct {
 	BaseURL string `mapstructure:"base_url"` // 站点公网地址，用于拼接支付回调 URL
-	Name    string `mapstructure:"name"`    // 站点名称，用于邮件标题等
+	Name    string `mapstructure:"name"`     // 站点名称，用于邮件标题等
 }
 
 type Config struct {
@@ -84,8 +93,13 @@ func Load() (*Config, error) {
 	v.SetDefault("server.port", 5000)
 	v.SetDefault("server.allowed_origins", []string{})
 	v.SetDefault("database.host", "127.0.0.1")
-	v.SetDefault("database.port", 3306)
+	v.SetDefault("database.port", 5432)
+	v.SetDefault("database.user", "postgres")
 	v.SetDefault("database.name", "authcenter")
+	v.SetDefault("database.ssl_mode", "disable")
+	v.SetDefault("database.timezone", "Asia/Shanghai")
+	v.SetDefault("database.maintenance_db", "postgres")
+	v.SetDefault("database.auto_create", true)
 	v.SetDefault("admin.username", "admin")
 	v.SetDefault("admin.password", "admin123")
 	v.SetDefault("smtp.port", 465)
@@ -103,6 +117,9 @@ func Load() (*Config, error) {
 	var cfg Config
 	if err := v.Unmarshal(&cfg); err != nil {
 		return nil, fmt.Errorf("解析配置失败: %w", err)
+	}
+	if err := cfg.Database.Validate(); err != nil {
+		return nil, fmt.Errorf("PostgreSQL 配置无效: %w", err)
 	}
 
 	// JWT secret 缺失时自动生成并写回
@@ -124,10 +141,50 @@ func Load() (*Config, error) {
 	return &cfg, nil
 }
 
-func (d *DatabaseConfig) DSN(withDB bool) string {
-	base := fmt.Sprintf("%s:%s@tcp(%s:%d)/", d.User, d.Password, d.Host, d.Port)
-	if withDB {
-		base += d.Name
+func (d DatabaseConfig) Validate() error {
+	if d.Host == "" {
+		return fmt.Errorf("host 不能为空")
 	}
-	return base + "?charset=utf8mb4&parseTime=True&loc=Local"
+	if d.Port < 1 || d.Port > 65535 {
+		return fmt.Errorf("port 必须在 1-65535 之间")
+	}
+	if d.User == "" {
+		return fmt.Errorf("user 不能为空")
+	}
+	if !postgresDatabaseNamePattern.MatchString(d.Name) {
+		return fmt.Errorf("name 只能包含字母、数字、下划线或中划线，且必须以字母或下划线开头，最长 63 位")
+	}
+	if !postgresDatabaseNamePattern.MatchString(d.MaintenanceDB) {
+		return fmt.Errorf("maintenance_db 格式不合法")
+	}
+	switch d.SSLMode {
+	case "disable", "allow", "prefer", "require", "verify-ca", "verify-full":
+	default:
+		return fmt.Errorf("ssl_mode 不支持 %q", d.SSLMode)
+	}
+	if d.TimeZone == "" {
+		return fmt.Errorf("timezone 不能为空")
+	}
+	if _, err := time.LoadLocation(d.TimeZone); err != nil {
+		return fmt.Errorf("timezone 不合法: %w", err)
+	}
+	return nil
+}
+
+func (d DatabaseConfig) DSN(databaseName string) string {
+	return fmt.Sprintf(
+		"host=%s port=%d user=%s password=%s dbname=%s sslmode=%s TimeZone=%s",
+		quotePostgresDSNValue(d.Host),
+		d.Port,
+		quotePostgresDSNValue(d.User),
+		quotePostgresDSNValue(d.Password),
+		quotePostgresDSNValue(databaseName),
+		quotePostgresDSNValue(d.SSLMode),
+		d.TimeZone,
+	)
+}
+
+func quotePostgresDSNValue(value string) string {
+	escaped := strings.NewReplacer(`\`, `\\`, `'`, `\'`).Replace(value)
+	return `'` + escaped + `'`
 }

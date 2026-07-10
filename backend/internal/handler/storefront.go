@@ -62,7 +62,7 @@ func StorefrontListProducts(c *gin.Context) {
 func StorefrontGetProduct(c *gin.Context) {
 	a := getApp(c)
 	var product models.Product
-	if err := a.DB.Where("slug = ?", c.Param("slug")).First(&product).Error; err != nil {
+	if err := a.DB.Where("slug = ?", strings.ToLower(strings.TrimSpace(c.Param("slug")))).First(&product).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "产品不存在"})
 		return
 	}

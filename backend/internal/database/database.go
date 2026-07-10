@@ -1,12 +1,14 @@
 package database
 
 import (
+	"errors"
 	"fmt"
 	"log"
+	"strings"
 	"time"
 
 	"golang.org/x/crypto/bcrypt"
-	"gorm.io/driver/mysql"
+	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 
@@ -16,30 +18,20 @@ import (
 )
 
 func Init(cfg *config.Config) (*gorm.DB, error) {
-	// 先无库连接建库
-	raw, err := gorm.Open(mysql.Open(cfg.Database.DSN(false)), &gorm.Config{
-		Logger: logger.Default.LogMode(logger.Silent),
-	})
+	db, err := openPostgres(cfg.Database, cfg.Database.Name, logger.Silent)
 	if err != nil {
-		return nil, fmt.Errorf("连接 MySQL 失败: %w", err)
+		if !cfg.Database.AutoCreate || !hasSQLState(err, "3D000") {
+			return nil, fmt.Errorf("连接 PostgreSQL 数据库失败: %w", err)
+		}
+		if err := createPostgresDatabase(cfg.Database); err != nil {
+			return nil, fmt.Errorf("创建 PostgreSQL 数据库失败: %w", err)
+		}
+		db, err = openPostgres(cfg.Database, cfg.Database.Name, logger.Silent)
+		if err != nil {
+			return nil, fmt.Errorf("连接新建的 PostgreSQL 数据库失败: %w", err)
+		}
 	}
-	createSQL := fmt.Sprintf(
-		"CREATE DATABASE IF NOT EXISTS `%s` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci",
-		cfg.Database.Name,
-	)
-	if err := raw.Exec(createSQL).Error; err != nil {
-		return nil, fmt.Errorf("创建数据库失败: %w", err)
-	}
-	if sqlDB, err := raw.DB(); err == nil {
-		_ = sqlDB.Close()
-	}
-
-	db, err := gorm.Open(mysql.Open(cfg.Database.DSN(true)), &gorm.Config{
-		Logger: logger.Default.LogMode(logger.Warn),
-	})
-	if err != nil {
-		return nil, fmt.Errorf("连接数据库失败: %w", err)
-	}
+	db = db.Session(&gorm.Session{Logger: logger.Default.LogMode(logger.Warn)})
 	sqlDB, err := db.DB()
 	if err != nil {
 		return nil, err
@@ -58,6 +50,52 @@ func Init(cfg *config.Config) (*gorm.DB, error) {
 		return nil, fmt.Errorf("初始化种子数据失败: %w", err)
 	}
 	return db, nil
+}
+
+func openPostgres(cfg config.DatabaseConfig, databaseName string, logLevel logger.LogLevel) (*gorm.DB, error) {
+	return gorm.Open(postgres.Open(cfg.DSN(databaseName)), &gorm.Config{
+		Logger: logger.Default.LogMode(logLevel),
+	})
+}
+
+func createPostgresDatabase(cfg config.DatabaseConfig) error {
+	admin, err := openPostgres(cfg, cfg.MaintenanceDB, logger.Silent)
+	if err != nil {
+		return fmt.Errorf("连接维护数据库 %q 失败: %w", cfg.MaintenanceDB, err)
+	}
+	if sqlDB, dbErr := admin.DB(); dbErr == nil {
+		defer sqlDB.Close()
+	}
+
+	var exists bool
+	if err := admin.Raw("SELECT EXISTS (SELECT 1 FROM pg_database WHERE datname = ?)", cfg.Name).
+		Scan(&exists).Error; err != nil {
+		return fmt.Errorf("检查数据库是否存在失败: %w", err)
+	}
+	if exists {
+		return nil
+	}
+
+	createSQL := fmt.Sprintf(
+		"CREATE DATABASE %s WITH TEMPLATE template0 ENCODING 'UTF8'",
+		quotePostgresIdentifier(cfg.Name),
+	)
+	if err := admin.Exec(createSQL).Error; err != nil && !hasSQLState(err, "42P04") {
+		return err
+	}
+	return nil
+}
+
+func quotePostgresIdentifier(identifier string) string {
+	return `"` + strings.ReplaceAll(identifier, `"`, `""`) + `"`
+}
+
+func hasSQLState(err error, state string) bool {
+	type sqlStateError interface {
+		SQLState() string
+	}
+	var target sqlStateError
+	return errors.As(err, &target) && target.SQLState() == state
 }
 
 func ensureOrderAccessTokens(db *gorm.DB) error {

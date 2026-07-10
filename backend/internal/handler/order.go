@@ -56,7 +56,7 @@ func ListOrders(c *gin.Context) {
 	}
 	if q := c.Query("q"); q != "" {
 		like := "%" + q + "%"
-		query = query.Where("order_no LIKE ? OR email LIKE ? OR customer_name LIKE ? OR trade_no LIKE ?", like, like, like, like)
+		query = query.Where("order_no ILIKE ? OR email ILIKE ? OR customer_name ILIKE ? OR trade_no ILIKE ?", like, like, like, like)
 	}
 
 	var total int64
@@ -95,11 +95,11 @@ func GetOrder(c *gin.Context) {
 func OrderStats(c *gin.Context) {
 	a := getApp(c)
 	type stat struct {
-		TotalRevenue   float64 `json:"total_revenue"`
-		TodayRevenue   float64 `json:"today_revenue"`
-		TotalOrders    int64   `json:"total_orders"`
-		PaidOrders     int64   `json:"paid_orders"`
-		PendingOrders  int64   `json:"pending_orders"`
+		TotalRevenue  float64 `json:"total_revenue"`
+		TodayRevenue  float64 `json:"today_revenue"`
+		TotalOrders   int64   `json:"total_orders"`
+		PaidOrders    int64   `json:"paid_orders"`
+		PendingOrders int64   `json:"pending_orders"`
 	}
 	var s stat
 	a.DB.Model(&models.PurchaseOrder{}).Where("status = ?", models.OrderPaid).Count(&s.PaidOrders)

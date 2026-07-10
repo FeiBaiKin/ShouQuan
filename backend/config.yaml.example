@@ -4,10 +4,16 @@ server:
     allowed_origins: []
 database:
     host: 127.0.0.1
-    port: 3306
-    user: root
+    port: 5432
+    user: postgres
     password: ""
     name: authcenter
+    # 本机直连通常使用 disable；公网或托管 PostgreSQL 应使用 require/verify-full
+    ssl_mode: disable
+    timezone: Asia/Shanghai
+    # auto_create=true 时通过此维护库创建目标数据库，账号需要 CREATEDB 权限
+    maintenance_db: postgres
+    auto_create: true
 jwt:
     # 留空则首次启动自动生成并写回
     secret: ""

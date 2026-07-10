@@ -2,6 +2,10 @@
 
 供被授权程序（如 XZJI）接入本中心的 API 契约。所有接口均为 JSON over HTTP，前缀 `/api/v1`，无需登录态。
 
+## 服务端数据库
+
+服务端数据库统一使用 PostgreSQL。首次启动时会根据 `backend/config.yaml` 自动创建目标数据库并执行表结构迁移；生产环境也可以提前建库并将 `database.auto_create` 设为 `false`。
+
 ## 接入前提
 
 在管理后台「产品管理」创建产品后获得：

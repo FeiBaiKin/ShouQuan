@@ -46,7 +46,7 @@ func ListLicenses(c *gin.Context) {
 	}
 	if q := c.Query("q"); q != "" {
 		like := "%" + q + "%"
-		query = query.Where("code LIKE ? OR customer_name LIKE ? OR customer_contact LIKE ? OR domain LIKE ?", like, like, like, like)
+		query = query.Where("code ILIKE ? OR customer_name ILIKE ? OR customer_contact ILIKE ? OR domain ILIKE ?", like, like, like, like)
 	}
 	now := time.Now()
 	switch c.Query("status") {

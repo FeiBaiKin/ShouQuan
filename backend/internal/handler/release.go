@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 
@@ -39,7 +40,7 @@ func ListReleases(c *gin.Context) {
 func UploadRelease(c *gin.Context) {
 	a := getApp(c)
 	productID, _ := strconv.Atoi(c.PostForm("product_id"))
-	version := c.PostForm("version")
+	version := strings.ToLower(strings.TrimSpace(c.PostForm("version")))
 	changelog := c.PostForm("changelog")
 	forced := c.PostForm("forced") == "true" || c.PostForm("forced") == "1"
 
