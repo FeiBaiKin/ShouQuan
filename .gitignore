@@ -16,12 +16,14 @@ backend/config.yaml
 
 # --- 部署 / 测试产物 ---
 deploy-package/
+package-deploy.cmd
 *.tar.gz
 
 # --- 运行时数据 ---
 backend/release/
 
 # --- 工具 / IDE ---
+.claude/
 .zcode/
 .vscode/
 .idea/

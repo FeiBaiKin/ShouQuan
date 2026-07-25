@@ -1,0 +1,422 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+/* .dark 挂在 <html>，同时匹配自身与后代（与旧站保持一致） */
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-geist-mono);
+  --font-heading: var(--font-sans);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+:root {
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+  --primary: oklch(0.205 0 0);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.556 0 0);
+  --accent: oklch(0.97 0 0);
+  --accent-foreground: oklch(0.205 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: oklch(0.922 0 0);
+  --input: oklch(0.922 0 0);
+  --ring: oklch(0.708 0 0);
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+  --radius: 0.625rem;
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: oklch(0.205 0 0);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.97 0 0);
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-ring: oklch(0.708 0 0);
+}
+
+.dark {
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.205 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.922 0 0);
+  --primary-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: oklch(0.269 0 0);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.556 0 0);
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+  --sidebar: oklch(0.205 0 0);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.556 0 0);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-sans;
+  }
+}
+
+/* ============================================================
+   Storefront 设计令牌与组件类（自 Vue 站原样迁移，纯 CSS）
+   Kimi-informed：克制、影院感、暗色优先、薄荷强调。
+   ============================================================ */
+:root {
+  --font-mono: 'JetBrains Mono', 'Cascadia Code', Consolas, 'Courier New', monospace;
+  --font-display: 'Plus Jakarta Sans', 'PingFang SC', 'Microsoft YaHei UI', 'Noto Sans SC', system-ui, sans-serif;
+
+  /* Light */
+  --sf-bg: #f8fafc;
+  --sf-ink: #0f172a;
+  --sf-muted: #64748b;
+  --sf-line: #e2e8f0;
+  --sf-panel: #ffffff;
+  --sf-panel-alt: #f1f5f9;
+  --sf-mint: #059669;
+  --sf-mint-bright: #10b981;
+  --sf-mint-soft: #ecfdf5;
+  --sf-mint-glow: 0 0 0 1px rgba(5, 150, 105, 0.08), 0 4px 16px -4px rgba(5, 150, 105, 0.12);
+  --sf-shadow: 0 1px 3px 0 rgb(15 23 42 / 0.06), 0 1px 2px -1px rgb(15 23 42 / 0.06);
+  --sf-shadow-lg: 0 10px 40px -10px rgb(15 23 42 / 0.08), 0 2px 8px -2px rgb(15 23 42 / 0.04);
+  --sf-radius: 12px;
+  --sf-radius-lg: 20px;
+
+  /* FX（Portal / ProductSales 2026 重设计） */
+  --fx-font-display: 'Space Grotesk', 'PingFang SC', 'Microsoft YaHei UI', 'Noto Sans SC', system-ui, sans-serif;
+  --fx-font-mono: 'JetBrains Mono', 'Cascadia Code', Consolas, monospace;
+  --fx-accent: #059669;
+  --fx-accent-hi: #10b981;
+  --fx-accent-ink: #ffffff;
+  --fx-cyan: #0e7490;
+  --fx-violet: #7c3aed;
+  --fx-card: rgba(255, 255, 255, 0.75);
+  --fx-card-solid: #ffffff;
+  --fx-card-line: rgba(15, 23, 42, 0.08);
+  --fx-card-line-hi: rgba(5, 150, 105, 0.35);
+  --fx-dot: rgba(15, 23, 42, 0.22);
+  --fx-aurora-a: rgba(16, 185, 129, 0.14);
+  --fx-aurora-b: rgba(56, 189, 248, 0.12);
+  --fx-aurora-c: rgba(167, 139, 250, 0.1);
+  --fx-glow: 0 24px 80px -24px rgba(5, 150, 105, 0.25);
+  --fx-glow-sm: 0 8px 32px -12px rgba(5, 150, 105, 0.35);
+  --fx-shadow-float: 0 32px 80px -32px rgb(15 23 42 / 0.25);
+  --fx-gradient: linear-gradient(96deg, #059669 0%, #0d9488 45%, #0284c7 100%);
+  --fx-spot: rgba(5, 150, 105, 0.08);
+}
+
+.dark {
+  --sf-bg: #020617;
+  --sf-ink: #f1f5f9;
+  --sf-muted: #94a3b8;
+  --sf-line: #1e293b;
+  --sf-panel: #0f172a;
+  --sf-panel-alt: #1e293b;
+  --sf-mint: #22c55e;
+  --sf-mint-bright: #4ade80;
+  --sf-mint-soft: #052e16;
+  --sf-mint-glow: 0 0 0 1px rgba(34, 197, 94, 0.12), 0 4px 24px -6px rgba(34, 197, 94, 0.15);
+  --sf-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.3), 0 1px 2px -1px rgb(0 0 0 / 0.3);
+  --sf-shadow-lg: 0 10px 40px -10px rgb(0 0 0 / 0.5), 0 2px 8px -2px rgb(0 0 0 / 0.3);
+
+  --fx-accent: #34d399;
+  --fx-accent-hi: #6ee7b7;
+  --fx-accent-ink: #04150c;
+  --fx-cyan: #22d3ee;
+  --fx-violet: #a78bfa;
+  --fx-card: rgba(148, 163, 184, 0.05);
+  --fx-card-solid: #0b1120;
+  --fx-card-line: rgba(148, 163, 184, 0.14);
+  --fx-card-line-hi: rgba(52, 211, 153, 0.45);
+  --fx-dot: rgba(148, 163, 184, 0.28);
+  --fx-aurora-a: rgba(16, 185, 129, 0.17);
+  --fx-aurora-b: rgba(14, 165, 233, 0.13);
+  --fx-aurora-c: rgba(139, 92, 246, 0.1);
+  --fx-glow: 0 24px 90px -20px rgba(52, 211, 153, 0.28);
+  --fx-glow-sm: 0 8px 36px -10px rgba(52, 211, 153, 0.4);
+  --fx-shadow-float: 0 40px 100px -32px rgb(0 0 0 / 0.7);
+  --fx-gradient: linear-gradient(96deg, #34d399 0%, #2dd4bf 40%, #38bdf8 80%, #a78bfa 105%);
+  --fx-spot: rgba(52, 211, 153, 0.09);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+body {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-family:
+    'PingFang SC', 'Microsoft YaHei UI', 'Microsoft YaHei',
+    'Noto Sans SC', system-ui, -apple-system, sans-serif;
+}
+
+/* 前台壳层 */
+.sf-shell {
+  min-height: 100dvh;
+  background: var(--sf-bg);
+  color: var(--sf-ink);
+}
+
+/* ---- Typography ---- */
+.sf-display { font-family: var(--font-display); letter-spacing: -0.02em; }
+.tnum { font-variant-numeric: tabular-nums; font-feature-settings: 'tnum'; }
+.mono { font-family: var(--font-mono); font-size: 0.92em; letter-spacing: 0.02em; }
+
+/* ---- Surfaces ---- */
+.sf-panel { background: var(--sf-panel); border: 1px solid var(--sf-line); border-radius: var(--sf-radius); }
+.sf-panel-lg { background: var(--sf-panel); border: 1px solid var(--sf-line); border-radius: var(--sf-radius-lg); }
+.sf-panel-alt { background: var(--sf-panel-alt); border-radius: var(--sf-radius); }
+.sf-glass { background: var(--sf-panel); border: 1px solid var(--sf-line); border-radius: var(--sf-radius-lg); }
+.dark .sf-glass {
+  background: rgba(15, 23, 42, 0.7);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+.sf-line { border-color: var(--sf-line); }
+.sf-muted { color: var(--sf-muted); }
+.sf-mint { color: var(--sf-mint); }
+
+/* ---- Buttons ---- */
+.sf-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem;
+  border-radius: 10px; padding: 0.65rem 1.2rem; font-size: 0.875rem; font-weight: 600;
+  line-height: 1; transition: all 0.2s ease; cursor: pointer;
+}
+.sf-btn:active { transform: scale(0.97); }
+.sf-btn-primary { background: var(--sf-mint); color: #fff; box-shadow: var(--sf-mint-glow); }
+.sf-btn-primary:hover { background: var(--sf-mint-bright); transform: translateY(-1px); }
+.sf-btn-ghost { border: 1px solid var(--sf-line); background: transparent; color: var(--sf-ink); }
+.sf-btn-ghost:hover { border-color: var(--sf-mint); color: var(--sf-mint); }
+.sf-btn-lg { padding: 0.8rem 1.6rem; font-size: 0.95rem; border-radius: 12px; }
+
+/* ---- Bento Grid ---- */
+.sf-bento {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px;
+  background: var(--sf-line); border: 1px solid var(--sf-line);
+  border-radius: var(--sf-radius-lg); overflow: hidden;
+}
+.sf-bento > * { background: var(--sf-panel); padding: 2rem; }
+
+/* ---- Scroll Reveal（CSS 版，SuccessView 等用） ---- */
+.sf-reveal {
+  opacity: 0; transform: translateY(24px);
+  transition: opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1), transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.sf-reveal.is-visible { opacity: 1; transform: translateY(0); }
+
+/* ---- Animations ---- */
+@keyframes sf-fade-up { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes sf-scale-in { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+.animate-sf-fade-up { animation: sf-fade-up 0.5s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.animate-sf-scale-in { animation: sf-scale-in 0.4s cubic-bezier(0.16, 1, 0.3, 1) both; }
+
+/* ============================================================
+   FX — Storefront 2026（Portal / ProductSales）
+   ============================================================ */
+.fx-display { font-family: var(--fx-font-display); letter-spacing: -0.03em; }
+.fx-mono { font-family: var(--fx-font-mono); letter-spacing: 0.02em; }
+.fx-gradient-text {
+  background: var(--fx-gradient); -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.fx-kicker {
+  font-family: var(--fx-font-mono); font-size: 11px; font-weight: 600;
+  letter-spacing: 0.22em; text-transform: uppercase; color: var(--fx-accent);
+}
+
+/* ---- FX Surfaces ---- */
+.fx-glass {
+  background: var(--fx-card); border: 1px solid var(--fx-card-line); border-radius: 20px;
+  backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+}
+.fx-panel { background: var(--fx-card-solid); border: 1px solid var(--fx-card-line); border-radius: 20px; }
+.fx-spot-card { position: relative; overflow: hidden; }
+.fx-spot-card::before {
+  content: ''; position: absolute; inset: 0; border-radius: inherit;
+  background: radial-gradient(360px circle at var(--mx, 50%) var(--my, 50%), var(--fx-spot), transparent 65%);
+  opacity: 0; transition: opacity 0.35s ease; pointer-events: none;
+}
+.fx-spot-card:hover::before { opacity: 1; }
+.fx-gborder {
+  position: relative; border: 1px solid transparent;
+  background:
+    linear-gradient(var(--fx-card-solid), var(--fx-card-solid)) padding-box,
+    var(--fx-gradient) border-box;
+}
+
+/* ---- FX Buttons ---- */
+.fx-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 0.45rem;
+  border-radius: 999px; padding: 0.7rem 1.4rem; font-size: 0.875rem; font-weight: 600;
+  line-height: 1; cursor: pointer;
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s ease,
+    background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+.fx-btn:active { transform: scale(0.96); }
+.fx-btn-primary { background: var(--fx-accent); color: var(--fx-accent-ink); box-shadow: var(--fx-glow-sm); }
+.fx-btn-primary:hover { background: var(--fx-accent-hi); transform: translateY(-2px); }
+.fx-btn-ghost {
+  border: 1px solid var(--fx-card-line); background: var(--fx-card); color: var(--sf-ink); backdrop-filter: blur(8px);
+}
+.fx-btn-ghost:hover { border-color: var(--fx-card-line-hi); color: var(--fx-accent); transform: translateY(-2px); }
+.fx-btn-lg { padding: 0.9rem 1.8rem; font-size: 0.95rem; }
+
+/* ---- FX Chip ---- */
+.fx-chip {
+  display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.35rem 0.8rem;
+  border-radius: 999px; border: 1px solid var(--fx-card-line); background: var(--fx-card);
+  backdrop-filter: blur(8px); font-size: 12px; font-weight: 600; color: var(--sf-muted);
+}
+.fx-chip-accent { border-color: var(--fx-card-line-hi); color: var(--fx-accent); }
+
+/* ---- FX Backdrop：点阵 + 极光 + 噪点 ---- */
+.fx-dotgrid {
+  background-image: radial-gradient(var(--fx-dot) 1px, transparent 1px);
+  background-size: 26px 26px;
+  mask-image: radial-gradient(ellipse 90% 70% at 50% 0%, #000 30%, transparent 78%);
+  -webkit-mask-image: radial-gradient(ellipse 90% 70% at 50% 0%, #000 30%, transparent 78%);
+}
+.fx-blob {
+  position: absolute; border-radius: 50%; filter: blur(90px); will-change: transform;
+  animation: fx-drift 26s ease-in-out infinite alternate;
+}
+@keyframes fx-drift {
+  0% { transform: translate3d(0, 0, 0) scale(1); }
+  50% { transform: translate3d(4%, 6%, 0) scale(1.08); }
+  100% { transform: translate3d(-4%, -3%, 0) scale(0.96); }
+}
+.fx-noise {
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  opacity: 0.035;
+}
+.dark .fx-noise { opacity: 0.05; }
+
+/* ---- FX Marquee ---- */
+.fx-marquee {
+  overflow: hidden;
+  mask-image: linear-gradient(90deg, transparent, #000 10%, #000 90%, transparent);
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 10%, #000 90%, transparent);
+}
+.fx-marquee-track {
+  display: flex; width: max-content; gap: 0.75rem;
+  animation: fx-marquee var(--fx-marquee-dur, 42s) linear infinite;
+}
+.fx-marquee:hover .fx-marquee-track { animation-play-state: paused; }
+.fx-marquee-track.is-reverse { animation-direction: reverse; }
+@keyframes fx-marquee { to { transform: translateX(-50%); } }
+
+/* ---- FX Reveal（GSAP 接管；reduced-motion 直接可见） ---- */
+[data-reveal], [data-hero] { opacity: 0; transform: translateY(28px); will-change: opacity, transform; }
+[data-reveal='blur'], [data-hero='blur'] { transform: translateY(28px); filter: blur(8px); }
+[data-reveal='scale'] { transform: translateY(16px) scale(0.94); }
+[data-stagger] { opacity: 0; transform: translateY(24px) scale(0.96); will-change: opacity, transform; }
+
+/* ---- FX Ticket 扫光 ---- */
+.fx-sheen { position: relative; overflow: hidden; }
+.fx-sheen::after {
+  content: ''; position: absolute; inset: -60% auto auto -60%; width: 60%; height: 220%;
+  transform: rotate(24deg) translateX(-120%);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.14), transparent);
+  animation: fx-sheen 5.5s ease-in-out infinite; pointer-events: none;
+}
+@keyframes fx-sheen {
+  0%, 55% { transform: rotate(24deg) translateX(-160%); }
+  85%, 100% { transform: rotate(24deg) translateX(420%); }
+}
+
+/* 打字光标 */
+.fx-caret {
+  display: inline-block; width: 2px; height: 1em; margin-left: 2px; vertical-align: -0.12em;
+  background: var(--fx-accent); animation: fx-caret 1.05s steps(1) infinite;
+}
+@keyframes fx-caret { 50% { opacity: 0; } }
+
+/* FAQ 手风琴（grid-rows 过渡） */
+.fx-fold { display: grid; grid-template-rows: 0fr; transition: grid-template-rows 0.35s cubic-bezier(0.16, 1, 0.3, 1); }
+.fx-fold.is-open { grid-template-rows: 1fr; }
+.fx-fold > * { overflow: hidden; }
+
+/* ---- Reduced motion：全部动效退化为静态可见 ---- */
+@media (prefers-reduced-motion: reduce) {
+  [data-reveal], [data-reveal='blur'], [data-reveal='scale'],
+  [data-hero], [data-hero='blur'], [data-stagger] {
+    opacity: 1 !important; transform: none !important; filter: none !important;
+  }
+  .fx-blob, .fx-marquee-track, .fx-sheen::after, .fx-caret { animation: none !important; }
+  .fx-fold { transition: none; }
+}

@@ -112,29 +112,47 @@ func Setup(a *app.App) *gin.Engine {
 	return r
 }
 
-// setupStatic 服务前端构建产物：优先 backend/public/，回退 ../frontend/dist/；SPA fallback
+// setupStatic 服务前端构建产物：优先 backend/public/，回退 ../frontend/out/。
+// 单一 Next 静态导出应用（前台 + /admin 后台同在其中）：
+//   public/ = index.html / buy.html / admin.html / admin/login.html ... + _next/
+// 命中顺序：精确文件 → <path>.html（干净 URL）→ SPA 壳 index.html。
 func setupStatic(r *gin.Engine) {
 	root := config.BackendRoot()
 	staticDir := filepath.Join(root, "public")
 	if _, err := os.Stat(staticDir); os.IsNotExist(err) {
-		alt := filepath.Join(root, "..", "frontend", "dist")
+		alt := filepath.Join(root, "..", "frontend", "out")
 		if _, err := os.Stat(alt); err == nil {
 			staticDir = alt
 		}
 	}
 	indexPath := filepath.Join(staticDir, "index.html")
 
+	fileExists := func(p string) bool {
+		info, err := os.Stat(p)
+		return err == nil && !info.IsDir()
+	}
+
 	r.NoRoute(func(c *gin.Context) {
-		if c.Request.Method != http.MethodGet || strings.HasPrefix(c.Request.URL.Path, "/api") {
+		reqPath := c.Request.URL.Path
+		if c.Request.Method != http.MethodGet || strings.HasPrefix(reqPath, "/api") {
 			c.JSON(http.StatusNotFound, gin.H{"error": "接口不存在"})
 			return
 		}
-		requested := filepath.Join(staticDir, filepath.Clean("/"+c.Request.URL.Path))
-		if info, err := os.Stat(requested); err == nil && !info.IsDir() {
-			c.File(requested)
+		clean := filepath.Clean("/" + reqPath)
+		// 1) 精确命中静态文件（_next/、screenshots/ 等）
+		if f := filepath.Join(staticDir, clean); fileExists(f) {
+			c.File(f)
 			return
 		}
-		if _, err := os.Stat(indexPath); err == nil {
+		// 2) 干净 URL：尝试 <path>.html（Next 静态导出每路由一个 html）
+		if clean != "/" && !strings.HasSuffix(clean, ".html") {
+			if f := filepath.Join(staticDir, clean+".html"); fileExists(f) {
+				c.File(f)
+				return
+			}
+		}
+		// 3) SPA 壳兜底
+		if fileExists(indexPath) {
 			c.File(indexPath)
 			return
 		}
