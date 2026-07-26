@@ -52,11 +52,16 @@ function LoginInner() {
   }
 
   return (
-    <div className="flex min-h-dvh items-center justify-center bg-background px-6 text-foreground">
-      <div className="w-[380px] max-w-full rounded-xl border bg-card p-6 shadow-sm">
-        <div className="mb-6 text-center">
-          <ShieldCheck size={34} className="mx-auto text-emerald-500" />
-          <h1 className="mt-2.5 text-xl font-semibold">授权升级中心</h1>
+    <div className="relative flex min-h-dvh items-center justify-center overflow-hidden bg-background px-6 text-foreground">
+      {/* 点阵背景（复用前台 fx-dotgrid） */}
+      <div aria-hidden className="fx-dotgrid pointer-events-none absolute inset-0" />
+
+      <div className="relative w-[400px] max-w-full rounded-2xl border bg-card p-8 shadow-lg shadow-black/[0.04] dark:shadow-black/20">
+        <div className="mb-7 text-center">
+          <div className="mx-auto flex size-12 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-md shadow-primary/25">
+            <ShieldCheck size={26} />
+          </div>
+          <h1 className="mt-4 text-xl font-semibold tracking-tight">授权升级中心</h1>
           <p className="mt-1 text-[13px] text-muted-foreground">程序授权与在线更新管理</p>
         </div>
         <form onSubmit={submit} className="space-y-4">
@@ -78,10 +83,13 @@ function LoginInner() {
               onChange={(e) => setPassword(e.target.value)}
             />
           </div>
-          <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? '登录中...' : '登 录'}
+          <Button type="submit" className="mt-1 w-full" size="lg" disabled={loading}>
+            {loading ? '登录中...' : '登录'}
           </Button>
         </form>
+        <div className="mono mt-7 text-center text-[10px] tracking-[0.18em] text-muted-foreground/70">
+          ADMIN CONSOLE
+        </div>
       </div>
     </div>
   )

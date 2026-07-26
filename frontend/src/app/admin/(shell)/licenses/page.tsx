@@ -1,12 +1,14 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { MoreHorizontal } from 'lucide-react'
+import { KeyRound, MoreHorizontal, Plus, Search } from 'lucide-react'
 import { toast } from 'sonner'
 import { extractError, licenseApi, productApi, type LicenseQuery } from '@/lib/api'
 import type { HeartbeatLog, License, LicenseEvent, LicenseStatus, Product } from '@/lib/types'
 import { durationLabels, eventLabels, formatTime, statusBadgeClass, statusLabels } from '@/lib/format'
 import { PageContainer, PageHeader } from '@/components/admin/page-header'
+import { EmptyState } from '@/components/admin/empty-state'
+import { TablePager } from '@/components/admin/table-pager'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -73,15 +75,15 @@ function Segmented({
   options: { label: string; value: string }[]
 }) {
   return (
-    <div className="inline-flex rounded-md border p-0.5">
+    <div className="inline-flex rounded-lg bg-muted p-0.5">
       {options.map((o) => (
         <button
           key={o.value}
           type="button"
           onClick={() => onChange(o.value)}
-          className={`rounded px-3 py-1.5 text-sm transition-colors ${
+          className={`rounded-md px-3 py-1.5 text-sm transition-colors ${
             value === o.value
-              ? 'bg-emerald-500/15 font-medium text-emerald-600 dark:text-emerald-400'
+              ? 'bg-background font-medium text-foreground shadow-sm'
               : 'text-muted-foreground hover:text-foreground'
           }`}
         >
@@ -133,8 +135,6 @@ export default function LicensesPage() {
 
   const patchQuery = (patch: Partial<LicenseQuery>, resetPage = true) =>
     setQuery((q) => ({ ...q, ...patch, ...(resetPage ? { page: 1 } : {}) }))
-
-  const totalPages = Math.max(1, Math.ceil(total / query.page_size))
 
   // ---- 发放授权 ----
   const [showCreate, setShowCreate] = useState(false)
@@ -408,12 +408,17 @@ export default function LicensesPage() {
       <PageHeader
         title="授权管理"
         sub="发放、续期、改绑、吊销客户授权"
-        actions={<Button onClick={openCreate}>发放授权</Button>}
+        actions={
+          <Button onClick={openCreate}>
+            <Plus />
+            发放授权
+          </Button>
+        }
       />
 
-      <Card className="gap-0 p-4">
+      <Card className="gap-0 overflow-hidden p-0">
         {/* 筛选 */}
-        <div className="mb-3.5 flex flex-wrap items-center gap-2.5">
+        <div className="flex flex-wrap items-center gap-2.5 border-b px-4 py-3">
           <Select
             value={query.product_id ? String(query.product_id) : ALL}
             onValueChange={(v) => patchQuery({ product_id: v === ALL ? null : Number(v) })}
@@ -458,6 +463,7 @@ export default function LicensesPage() {
             }}
           />
           <Button variant="secondary" onClick={() => patchQuery({ q: qInput })}>
+            <Search />
             搜索
           </Button>
         </div>
@@ -488,8 +494,8 @@ export default function LicensesPage() {
                 </TableRow>
               ) : items.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={10} className="py-10 text-center text-muted-foreground">
-                    暂无数据
+                  <TableCell colSpan={10} className="p-0">
+                    <EmptyState icon={KeyRound} title="暂无授权" hint="调整筛选条件，或发放新授权" />
                   </TableCell>
                 </TableRow>
               ) : (
@@ -497,7 +503,7 @@ export default function LicensesPage() {
                   <TableRow key={l.id}>
                     <TableCell>
                       <span
-                        className="mono cursor-pointer hover:text-emerald-600"
+                        className="mono cursor-pointer transition-colors hover:text-primary"
                         title="点击复制"
                         onClick={() => copyCode(l.code)}
                       >
@@ -552,42 +558,15 @@ export default function LicensesPage() {
         </div>
 
         {/* 分页 */}
-        <div className="mt-3.5 flex items-center justify-end gap-3 text-sm">
-          <span className="text-muted-foreground">共 {total} 条</span>
-          <Select
-            value={String(query.page_size)}
-            onValueChange={(v) => patchQuery({ page_size: Number(v) })}
-          >
-            <SelectTrigger className="w-[110px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {[20, 50, 100].map((n) => (
-                <SelectItem key={n} value={String(n)}>
-                  {n} 条/页
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={query.page <= 1}
-            onClick={() => patchQuery({ page: query.page - 1 }, false)}
-          >
-            上一页
-          </Button>
-          <span className="tabular-nums">
-            {query.page} / {totalPages}
-          </span>
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={query.page >= totalPages}
-            onClick={() => patchQuery({ page: query.page + 1 }, false)}
-          >
-            下一页
-          </Button>
+        <div className="border-t px-4 py-3">
+          <TablePager
+            total={total}
+            page={query.page}
+            pageSize={query.page_size}
+            disabled={loading}
+            onPageChange={(p) => patchQuery({ page: p }, false)}
+            onPageSizeChange={(s) => patchQuery({ page_size: s })}
+          />
         </div>
       </Card>
 

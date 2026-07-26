@@ -2,11 +2,12 @@
 
 import { useEffect, useRef, useState, type DragEvent } from 'react'
 import { toast } from 'sonner'
-import { UploadCloud, X } from 'lucide-react'
+import { Package, UploadCloud, X } from 'lucide-react'
 import { extractError, productApi, releaseApi } from '@/lib/api'
 import type { Product, Release } from '@/lib/types'
 import { formatSize, formatTime } from '@/lib/format'
 import { PageContainer, PageHeader } from '@/components/admin/page-header'
+import { EmptyState } from '@/components/admin/empty-state'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -250,12 +251,15 @@ export default function ReleasesPage() {
                 ))}
               </SelectContent>
             </Select>
-            <Button onClick={openUpload}>上传新版本</Button>
+            <Button onClick={openUpload}>
+              <UploadCloud />
+              上传新版本
+            </Button>
           </>
         }
       />
 
-      <Card size="sm" className="p-0">
+      <Card size="sm" className="gap-0 overflow-hidden p-0">
         <Table>
           <TableHeader>
             <TableRow>
@@ -280,8 +284,12 @@ export default function ReleasesPage() {
               </TableRow>
             ) : releases.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={COLS} className="py-10 text-center text-muted-foreground">
-                  暂无版本
+                <TableCell colSpan={COLS} className="p-0">
+                  <EmptyState
+                    icon={Package}
+                    title="暂无版本"
+                    hint="上传更新包并发布后，客户站点将通过心跳感知新版本"
+                  />
                 </TableCell>
               </TableRow>
             ) : (

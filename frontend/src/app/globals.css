@@ -411,6 +411,72 @@ body {
 .fx-fold.is-open { grid-template-rows: 1fr; }
 .fx-fold > * { overflow: hidden; }
 
+/* ============================================================
+   Admin 后台设计令牌：继承前台薄荷绿品牌 + 冷灰（slate 调）中性面板。
+   通过 body:has 作用于全部后台内容（含 Radix 传送门弹层）。
+   ============================================================ */
+body:has([data-admin-root]) {
+  --background: oklch(0.984 0.005 248);
+  --foreground: oklch(0.208 0.042 266);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.208 0.042 266);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.208 0.042 266);
+  --primary: oklch(0.596 0.13 163);
+  --primary-foreground: oklch(1 0 0);
+  --secondary: oklch(0.951 0.008 248);
+  --secondary-foreground: oklch(0.372 0.044 257);
+  --muted: oklch(0.968 0.007 248);
+  --muted-foreground: oklch(0.554 0.046 257);
+  --accent: oklch(0.968 0.007 248);
+  --accent-foreground: oklch(0.208 0.042 266);
+  --border: oklch(0.929 0.013 256);
+  --input: oklch(0.929 0.013 256);
+  --ring: oklch(0.696 0.15 162);
+}
+.dark body:has([data-admin-root]) {
+  --background: oklch(0.152 0.025 263);
+  --foreground: oklch(0.951 0.008 248);
+  --card: oklch(0.203 0.036 264);
+  --card-foreground: oklch(0.951 0.008 248);
+  --popover: oklch(0.203 0.036 264);
+  --popover-foreground: oklch(0.951 0.008 248);
+  --primary: oklch(0.785 0.13 165);
+  --primary-foreground: oklch(0.262 0.051 173);
+  --secondary: oklch(0.279 0.038 260);
+  --secondary-foreground: oklch(0.951 0.008 248);
+  --muted: oklch(0.279 0.038 260);
+  --muted-foreground: oklch(0.711 0.035 257);
+  --accent: oklch(0.279 0.038 260);
+  --accent-foreground: oklch(0.951 0.008 248);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.696 0.15 162);
+}
+
+/* ---- 后台表格：静默表头 + 贴卡片边缘的首尾列留白 ---- */
+[data-admin-root] [data-slot='table-header'] {
+  background: color-mix(in oklab, var(--muted) 45%, transparent);
+}
+[data-admin-root] [data-slot='table-head'] {
+  height: 2.25rem;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--muted-foreground);
+}
+[data-admin-root] [data-slot='table-head']:first-child,
+[data-admin-root] [data-slot='table-cell']:first-child {
+  padding-left: 16px;
+}
+[data-admin-root] [data-slot='table-head']:last-child,
+[data-admin-root] [data-slot='table-cell']:last-child {
+  padding-right: 16px;
+}
+[data-admin-root] [data-slot='table-cell'] {
+  padding-top: 10px;
+  padding-bottom: 10px;
+}
+
 /* ---- Reduced motion：全部动效退化为静态可见 ---- */
 @media (prefers-reduced-motion: reduce) {
   [data-reveal], [data-reveal='blur'], [data-reveal='scale'],

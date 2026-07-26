@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
+import { TriangleAlert } from 'lucide-react'
 import { authApi, extractError } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
 import { PageContainer, PageHeader } from '@/components/admin/page-header'
@@ -49,10 +50,11 @@ export default function ChangePasswordPage() {
   return (
     <PageContainer>
       <PageHeader title="修改密码" sub="首次登录必须设置新的管理员密码" />
-      <div className="max-w-[520px] rounded-xl border bg-card p-6">
+      <div className="max-w-[520px] rounded-xl bg-card p-6 ring-1 ring-foreground/10">
         {mustChangePassword && (
-          <div className="mb-[18px] rounded-md bg-amber-500/12 px-4 py-3 text-[13px] text-amber-700 dark:text-amber-400">
-            当前账号仍在使用初始密码，修改后才能进入其他后台页面。
+          <div className="mb-[18px] flex items-start gap-2.5 rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-[13px] text-amber-700 dark:text-amber-400">
+            <TriangleAlert className="mt-0.5 size-4 shrink-0" />
+            <span>当前账号仍在使用初始密码，修改后才能进入其他后台页面。</span>
           </div>
         )}
         <form onSubmit={submit} className="space-y-4">

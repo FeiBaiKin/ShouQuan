@@ -2,9 +2,11 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
+import { Plus, Ticket } from 'lucide-react'
 import { extractError, planApi, productApi } from '@/lib/api'
 import type { DurationType, PricingPlan, Product } from '@/lib/types'
 import { PageContainer, PageHeader } from '@/components/admin/page-header'
+import { EmptyState } from '@/components/admin/empty-state'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -191,12 +193,17 @@ export default function PlansPage() {
       <PageHeader
         title="套餐管理"
         sub="为产品配置可购买的授权套餐"
-        actions={<Button onClick={openCreate}>新建套餐</Button>}
+        actions={
+          <Button onClick={openCreate}>
+            <Plus />
+            新建套餐
+          </Button>
+        }
       />
 
-      <Card className="p-4">
+      <Card className="gap-0 overflow-hidden p-0">
         {loading ? (
-          <div className="space-y-2">
+          <div className="space-y-2 p-4">
             {Array.from({ length: 5 }).map((_, i) => (
               <Skeleton key={i} className="h-10 rounded-md" />
             ))}
@@ -238,15 +245,15 @@ export default function PlansPage() {
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1">
-                        <Button variant="link" size="sm" className="px-1" onClick={() => openEdit(r)}>
+                        <Button variant="ghost" size="sm" onClick={() => openEdit(r)}>
                           编辑
                         </Button>
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
                             <Button
-                              variant="link"
+                              variant="ghost"
                               size="sm"
-                              className="px-1 text-destructive"
+                              className="text-destructive hover:text-destructive"
                             >
                               删除
                             </Button>
@@ -275,8 +282,12 @@ export default function PlansPage() {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={8} className="py-8 text-center text-muted-foreground">
-                    暂无套餐
+                  <TableCell colSpan={8} className="p-0">
+                    <EmptyState
+                      icon={Ticket}
+                      title="暂无套餐"
+                      hint="为产品配置可购买的授权套餐后，将展示在前台购买页"
+                    />
                   </TableCell>
                 </TableRow>
               )}

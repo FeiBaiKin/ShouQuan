@@ -2,10 +2,12 @@
 
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
+import { Box, Copy, Plus } from 'lucide-react'
 import { extractError, productApi } from '@/lib/api'
 import type { Product } from '@/lib/types'
 import { formatDate } from '@/lib/format'
 import { PageContainer, PageHeader } from '@/components/admin/page-header'
+import { EmptyState } from '@/components/admin/empty-state'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -119,7 +121,12 @@ export default function ProductsPage() {
       <PageHeader
         title="产品管理"
         sub="每个产品持有独立的签名密钥对，公钥需嵌入接入方程序"
-        actions={<Button onClick={openCreate}>新建产品</Button>}
+        actions={
+          <Button onClick={openCreate}>
+            <Plus />
+            新建产品
+          </Button>
+        }
       />
 
       {loading ? (
@@ -129,45 +136,61 @@ export default function ProductsPage() {
           ))}
         </div>
       ) : products.length === 0 ? (
-        <div className="flex flex-col items-center gap-4 py-20 text-sm text-muted-foreground">
-          <span>还没有产品</span>
-          <Button onClick={openCreate}>创建第一个产品</Button>
-        </div>
+        <Card className="p-0">
+          <EmptyState
+            icon={Box}
+            title="还没有产品"
+            hint="每个产品持有独立的签名密钥对，创建后即可发放授权"
+            action={
+              <Button onClick={openCreate}>
+                <Plus />
+                创建第一个产品
+              </Button>
+            }
+          />
+        </Card>
       ) : (
         <div className="space-y-3">
           {products.map((p) => (
             <Card key={p.id} size="sm" className="p-4">
               <div className="flex items-start justify-between gap-4">
-                <div className="flex min-w-0 flex-col gap-1.5">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-[15px] font-semibold">{p.name}</span>
-                    <Badge variant="secondary">
-                      <span className="mono">{p.slug}</span>
-                    </Badge>
-                    {p.latest_version && (
-                      <Badge className="border-transparent bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
-                        <span className="mono">v{p.latest_version}</span>
+                <div className="flex min-w-0 items-start gap-3.5">
+                  <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                    <Box className="size-5" />
+                  </div>
+                  <div className="flex min-w-0 flex-col gap-1.5">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-[15px] font-semibold">{p.name}</span>
+                      <Badge variant="secondary">
+                        <span className="mono">{p.slug}</span>
                       </Badge>
-                    )}
-                  </div>
-                  <div className="text-[13px] text-muted-foreground">
-                    授权 {p.license_count ?? 0} 个 · 版本 {p.release_count ?? 0} 个 · 创建于{' '}
-                    {formatDate(p.created_at)}
-                    {p.remark ? ` · ${p.remark}` : ''}
-                  </div>
-                  <div className="flex min-w-0 items-center gap-2">
-                    <span className="shrink-0 text-xs text-muted-foreground">公钥</span>
-                    <code className="mono max-w-[420px] truncate text-xs text-muted-foreground opacity-75">
-                      {p.public_key}
-                    </code>
-                    <Button
-                      variant="link"
-                      size="xs"
-                      className="h-auto px-0"
-                      onClick={() => copy(p.public_key, '公钥')}
-                    >
-                      复制
-                    </Button>
+                      {p.latest_version && (
+                        <Badge className="border-transparent bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
+                          <span className="mono">v{p.latest_version}</span>
+                        </Badge>
+                      )}
+                    </div>
+                    <div className="text-[13px] text-muted-foreground">
+                      授权 {p.license_count ?? 0} 个 · 版本 {p.release_count ?? 0} 个 · 创建于{' '}
+                      {formatDate(p.created_at)}
+                      {p.remark ? ` · ${p.remark}` : ''}
+                    </div>
+                    <div className="flex min-w-0 items-center gap-2">
+                      <span className="shrink-0 text-xs text-muted-foreground">公钥</span>
+                      <div className="flex min-w-0 items-center gap-1 rounded-md bg-muted/60 py-0.5 pl-2 pr-0.5">
+                        <code className="mono max-w-[400px] truncate text-xs text-muted-foreground">
+                          {p.public_key}
+                        </code>
+                        <Button
+                          variant="ghost"
+                          size="icon-xs"
+                          aria-label="复制公钥"
+                          onClick={() => copy(p.public_key, '公钥')}
+                        >
+                          <Copy />
+                        </Button>
+                      </div>
+                    </div>
                   </div>
                 </div>
                 <div className="flex shrink-0 items-center gap-2">

@@ -2,14 +2,17 @@
 
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
-import { ChevronLeft, ChevronRight, Copy, Search } from 'lucide-react'
+import { Copy, Receipt, Search } from 'lucide-react'
 import { extractError, orderApi, productApi } from '@/lib/api'
-import type { OrderStatus, Product, PurchaseOrder } from '@/lib/types'
+import type { Product, PurchaseOrder } from '@/lib/types'
 import { formatTime } from '@/lib/format'
 import { PageContainer, PageHeader } from '@/components/admin/page-header'
+import { EmptyState } from '@/components/admin/empty-state'
+import { TablePager } from '@/components/admin/table-pager'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
+import { Card } from '@/components/ui/card'
 import {
   Select,
   SelectContent,
@@ -56,8 +59,6 @@ const statusMap: Record<string, { label: string; className: string }> = {
   closed: { label: '已关闭', className: 'bg-muted text-muted-foreground border-transparent' },
 }
 const methodMap: Record<string, string> = { alipay: '支付宝', wechat: '微信' }
-
-const PAGE_SIZES = [20, 50, 100]
 
 export default function OrdersPage() {
   const [orders, setOrders] = useState<PurchaseOrder[]>([])
@@ -127,15 +128,15 @@ export default function OrdersPage() {
     navigator.clipboard.writeText(code).then(() => toast.success('已复制'))
   }
 
-  const totalPages = Math.max(1, Math.ceil(total / pageSize))
   const COLS = 10
 
   return (
     <PageContainer>
       <PageHeader title="订单管理" sub="用户购买授权的订单记录" />
 
-      {/* 筛选栏 */}
-      <div className="mb-4 flex flex-wrap items-center gap-2">
+      <Card className="gap-0 overflow-hidden p-0">
+        {/* 筛选栏 */}
+        <div className="flex flex-wrap items-center gap-2.5 border-b px-4 py-3">
         <Select
           value={status || ALL}
           onValueChange={(v) => onFilterChange(setStatus, v)}
@@ -199,10 +200,9 @@ export default function OrdersPage() {
           <Search />
           查询
         </Button>
-      </div>
+        </div>
 
-      {/* 订单表格 */}
-      <div className="rounded-xl border">
+        {/* 订单表格 */}
         <Table>
           <TableHeader>
             <TableRow>
@@ -281,60 +281,29 @@ export default function OrdersPage() {
               })
             ) : (
               <TableRow>
-                <TableCell colSpan={COLS} className="h-24 text-center text-muted-foreground">
-                  暂无订单
+                <TableCell colSpan={COLS} className="p-0">
+                  <EmptyState icon={Receipt} title="暂无订单" hint="用户从前台购买后会出现在这里" />
                 </TableCell>
               </TableRow>
             )}
           </TableBody>
         </Table>
-      </div>
 
-      {/* 分页控件（服务端分页） */}
-      <div className="mt-4 flex flex-wrap items-center justify-end gap-3 text-sm text-muted-foreground">
-        <span>共 {total} 条</span>
-        <Select
-          value={String(pageSize)}
-          onValueChange={(v) => {
-            setPageSize(Number(v))
-            setPage(1)
-          }}
-        >
-          <SelectTrigger size="sm" className="w-[110px]">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {PAGE_SIZES.map((s) => (
-              <SelectItem key={s} value={String(s)}>
-                {s} 条/页
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <span>
-          {page} / {totalPages}
-        </span>
-        <div className="flex items-center gap-1">
-          <Button
-            variant="outline"
-            size="icon-sm"
-            disabled={page <= 1 || loading}
-            onClick={() => setPage((p) => Math.max(1, p - 1))}
-            aria-label="上一页"
-          >
-            <ChevronLeft />
-          </Button>
-          <Button
-            variant="outline"
-            size="icon-sm"
-            disabled={page >= totalPages || loading}
-            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-            aria-label="下一页"
-          >
-            <ChevronRight />
-          </Button>
+        {/* 分页控件（服务端分页） */}
+        <div className="border-t px-4 py-3">
+          <TablePager
+            total={total}
+            page={page}
+            pageSize={pageSize}
+            disabled={loading}
+            onPageChange={setPage}
+            onPageSizeChange={(s) => {
+              setPageSize(s)
+              setPage(1)
+            }}
+          />
         </div>
-      </div>
+      </Card>
     </PageContainer>
   )
 }

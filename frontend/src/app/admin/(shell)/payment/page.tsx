@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, type ReactNode } from 'react'
-import { CreditCard, Globe, Mail, Save, Send } from 'lucide-react'
+import { ChevronDown, CreditCard, Globe, Mail, Save, Send } from 'lucide-react'
 import { toast } from 'sonner'
 import { extractError, paymentConfigApi } from '@/lib/api'
 import { PageContainer, PageHeader } from '@/components/admin/page-header'
@@ -21,11 +21,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-
-const providerOptions = [
-  { label: '支付宝', value: 'alipay' },
-  { label: '微信支付', value: 'wechat' },
-]
 
 const aliSceneOptions = [
   { label: '电脑网站支付 page（跳转收银台）', value: 'page' },
@@ -50,13 +45,61 @@ function Field({
   )
 }
 
-/** 带文字的分割线（对应 NDivider 文本样式）。 */
-function LabeledDivider({ children }: { children: ReactNode }) {
+/** 支付渠道折叠面板：头部为渠道名 + 启用开关，配置项内嵌在面板内。 */
+function ProviderPanel({
+  title,
+  enabled,
+  onEnabledChange,
+  children,
+}: {
+  title: string
+  enabled: boolean
+  onEnabledChange: (on: boolean) => void
+  children: ReactNode
+}) {
+  const [open, setOpen] = useState(enabled)
   return (
-    <div className="flex items-center gap-3 pt-2">
-      <Separator className="flex-1" />
-      <span className="shrink-0 text-xs font-medium text-muted-foreground">{children}</span>
-      <Separator className="flex-1" />
+    <div className="rounded-lg border">
+      <div
+        role="button"
+        tabIndex={0}
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault()
+            setOpen((v) => !v)
+          }
+        }}
+        className="flex cursor-pointer select-none items-center justify-between gap-3 px-4 py-3"
+      >
+        <div className="flex items-center gap-2">
+          <ChevronDown
+            className={`size-4 text-muted-foreground transition-transform duration-200 ${
+              open ? '' : '-rotate-90'
+            }`}
+          />
+          <span className={`text-sm font-medium ${enabled ? '' : 'text-muted-foreground'}`}>
+            {title}
+          </span>
+        </div>
+        {/* 开关独立于头部点击（阻止冒泡，避免切换开关时折叠面板） */}
+        <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+          <span className="text-xs text-muted-foreground">{enabled ? '已启用' : '未启用'}</span>
+          <Switch
+            checked={enabled}
+            onCheckedChange={(on) => {
+              onEnabledChange(on)
+              if (on) setOpen(true)
+            }}
+          />
+        </div>
+      </div>
+      <div className={`fx-fold ${open ? 'is-open' : ''}`}>
+        <div>
+          <div className="space-y-4 border-t px-4 py-4">{children}</div>
+        </div>
+      </div>
     </div>
   )
 }
@@ -185,143 +228,153 @@ export default function PaymentConfigPage() {
           <TabsContent value="payment">
             <Card>
               <CardContent className="space-y-4">
-                <Field label="启用的支付方式">
-                  <div className="flex flex-wrap gap-6">
-                    {providerOptions.map((opt) => (
-                      <label key={opt.value} className="flex items-center gap-2 text-sm">
-                        <Switch
-                          checked={enabledProviders.includes(opt.value)}
-                          onCheckedChange={(on) => toggleProvider(opt.value, on)}
-                        />
-                        {opt.label}
-                      </label>
-                    ))}
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <Field label="站点公网地址（用于拼接回调 URL）">
+                    <Input
+                      value={payment.payment_site_url ?? ''}
+                      onChange={(e) => updatePayment('payment_site_url', e.target.value)}
+                      placeholder="https://auth.example.com"
+                    />
+                  </Field>
+                </div>
+
+                <ProviderPanel
+                  title="微信支付 V3"
+                  enabled={enabledProviders.includes('wechat')}
+                  onEnabledChange={(on) => toggleProvider('wechat', on)}
+                >
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <Field label="AppID">
+                      <Input
+                        value={payment.payment_wx_appid ?? ''}
+                        onChange={(e) => updatePayment('payment_wx_appid', e.target.value)}
+                        placeholder="wx 开头的应用 ID"
+                      />
+                    </Field>
+                    <Field label="商户号 MchID">
+                      <Input
+                        value={payment.payment_wx_mchid ?? ''}
+                        onChange={(e) => updatePayment('payment_wx_mchid', e.target.value)}
+                      />
+                    </Field>
+                    <Field label="证书序列号">
+                      <Input
+                        value={payment.payment_wx_serial_no ?? ''}
+                        onChange={(e) => updatePayment('payment_wx_serial_no', e.target.value)}
+                      />
+                    </Field>
+                    <Field label="APIv3 密钥（32 字节）">
+                      <Input
+                        type="password"
+                        value={payment.payment_wx_api_v3_key ?? ''}
+                        onChange={(e) => updatePayment('payment_wx_api_v3_key', e.target.value)}
+                      />
+                    </Field>
                   </div>
-                </Field>
+                  <div className="grid gap-4 lg:grid-cols-2">
+                    <Field label="商户私钥（PEM）">
+                      <Textarea
+                        rows={5}
+                        value={payment.payment_wx_private_key ?? ''}
+                        onChange={(e) => updatePayment('payment_wx_private_key', e.target.value)}
+                        placeholder={'-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----'}
+                      />
+                    </Field>
+                    <Field label="平台公钥或平台证书（PEM）">
+                      <Textarea
+                        rows={5}
+                        value={payment.payment_wx_platform_public_key ?? ''}
+                        onChange={(e) =>
+                          updatePayment('payment_wx_platform_public_key', e.target.value)
+                        }
+                        placeholder={'-----BEGIN PUBLIC KEY-----\n...\n-----END PUBLIC KEY-----'}
+                      />
+                    </Field>
+                  </div>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <Field label="平台证书序列号">
+                      <Input
+                        value={payment.payment_wx_platform_serial_no ?? ''}
+                        onChange={(e) =>
+                          updatePayment('payment_wx_platform_serial_no', e.target.value)
+                        }
+                      />
+                    </Field>
+                    <Field label="异步通知 URL（留空则自动拼接）">
+                      <Input
+                        value={payment.payment_wx_notify_url ?? ''}
+                        onChange={(e) => updatePayment('payment_wx_notify_url', e.target.value)}
+                        placeholder="https://auth.example.com/api/payment/callback/wechat"
+                      />
+                    </Field>
+                  </div>
+                </ProviderPanel>
 
-                <Field label="站点公网地址（用于拼接回调 URL）" className="max-w-[360px]">
-                  <Input
-                    value={payment.payment_site_url ?? ''}
-                    onChange={(e) => updatePayment('payment_site_url', e.target.value)}
-                    placeholder="https://auth.example.com"
-                  />
-                </Field>
-
-                <LabeledDivider>微信支付 V3</LabeledDivider>
-
-                <Field label="AppID">
-                  <Input
-                    value={payment.payment_wx_appid ?? ''}
-                    onChange={(e) => updatePayment('payment_wx_appid', e.target.value)}
-                    placeholder="wx 开头的应用 ID"
-                  />
-                </Field>
-                <Field label="商户号 MchID">
-                  <Input
-                    value={payment.payment_wx_mchid ?? ''}
-                    onChange={(e) => updatePayment('payment_wx_mchid', e.target.value)}
-                  />
-                </Field>
-                <Field label="证书序列号">
-                  <Input
-                    value={payment.payment_wx_serial_no ?? ''}
-                    onChange={(e) => updatePayment('payment_wx_serial_no', e.target.value)}
-                  />
-                </Field>
-                <Field label="APIv3 密钥（32 字节）">
-                  <Input
-                    type="password"
-                    value={payment.payment_wx_api_v3_key ?? ''}
-                    onChange={(e) => updatePayment('payment_wx_api_v3_key', e.target.value)}
-                  />
-                </Field>
-                <Field label="商户私钥（PEM）">
-                  <Textarea
-                    rows={5}
-                    value={payment.payment_wx_private_key ?? ''}
-                    onChange={(e) => updatePayment('payment_wx_private_key', e.target.value)}
-                    placeholder={'-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----'}
-                  />
-                </Field>
-                <Field label="平台证书序列号">
-                  <Input
-                    value={payment.payment_wx_platform_serial_no ?? ''}
-                    onChange={(e) => updatePayment('payment_wx_platform_serial_no', e.target.value)}
-                  />
-                </Field>
-                <Field label="平台公钥或平台证书（PEM）">
-                  <Textarea
-                    rows={5}
-                    value={payment.payment_wx_platform_public_key ?? ''}
-                    onChange={(e) =>
-                      updatePayment('payment_wx_platform_public_key', e.target.value)
-                    }
-                    placeholder={'-----BEGIN PUBLIC KEY-----\n...\n-----END PUBLIC KEY-----'}
-                  />
-                </Field>
-                <Field label="异步通知 URL（留空则自动拼接）">
-                  <Input
-                    value={payment.payment_wx_notify_url ?? ''}
-                    onChange={(e) => updatePayment('payment_wx_notify_url', e.target.value)}
-                    placeholder="https://auth.example.com/api/payment/callback/wechat"
-                  />
-                </Field>
-
-                <LabeledDivider>支付宝</LabeledDivider>
-
-                <Field label="应用 AppID">
-                  <Input
-                    value={payment.payment_ali_appid ?? ''}
-                    onChange={(e) => updatePayment('payment_ali_appid', e.target.value)}
-                  />
-                </Field>
-                <Field label="应用私钥（PEM）">
-                  <Textarea
-                    rows={5}
-                    value={payment.payment_ali_private_key ?? ''}
-                    onChange={(e) => updatePayment('payment_ali_private_key', e.target.value)}
-                    placeholder={
-                      '-----BEGIN RSA PRIVATE KEY-----\n...\n-----END RSA PRIVATE KEY-----'
-                    }
-                  />
-                </Field>
-                <Field label="支付宝公钥（PEM）">
-                  <Textarea
-                    rows={5}
-                    value={payment.payment_ali_public_key ?? ''}
-                    onChange={(e) => updatePayment('payment_ali_public_key', e.target.value)}
-                    placeholder={'-----BEGIN PUBLIC KEY-----\n...\n-----END PUBLIC KEY-----'}
-                  />
-                </Field>
-                <Field label="支付场景" className="max-w-[360px]">
-                  <Select
-                    value={payment.payment_ali_scene || undefined}
-                    onValueChange={(v) => updatePayment('payment_ali_scene', v)}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="选择支付场景" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {aliSceneOptions.map((opt) => (
-                        <SelectItem key={opt.value} value={opt.value}>
-                          {opt.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </Field>
-                <Field label="异步通知 URL（留空则自动拼接）">
-                  <Input
-                    value={payment.payment_ali_notify_url ?? ''}
-                    onChange={(e) => updatePayment('payment_ali_notify_url', e.target.value)}
-                  />
-                </Field>
-                <Field label="同步返回 URL（留空则自动拼接）">
-                  <Input
-                    value={payment.payment_ali_return_url ?? ''}
-                    onChange={(e) => updatePayment('payment_ali_return_url', e.target.value)}
-                  />
-                </Field>
+                <ProviderPanel
+                  title="支付宝"
+                  enabled={enabledProviders.includes('alipay')}
+                  onEnabledChange={(on) => toggleProvider('alipay', on)}
+                >
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <Field label="应用 AppID">
+                      <Input
+                        value={payment.payment_ali_appid ?? ''}
+                        onChange={(e) => updatePayment('payment_ali_appid', e.target.value)}
+                      />
+                    </Field>
+                    <Field label="支付场景">
+                      <Select
+                        value={payment.payment_ali_scene || undefined}
+                        onValueChange={(v) => updatePayment('payment_ali_scene', v)}
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="选择支付场景" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {aliSceneOptions.map((opt) => (
+                            <SelectItem key={opt.value} value={opt.value}>
+                              {opt.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </Field>
+                  </div>
+                  <div className="grid gap-4 lg:grid-cols-2">
+                    <Field label="应用私钥（PEM）">
+                      <Textarea
+                        rows={5}
+                        value={payment.payment_ali_private_key ?? ''}
+                        onChange={(e) => updatePayment('payment_ali_private_key', e.target.value)}
+                        placeholder={
+                          '-----BEGIN RSA PRIVATE KEY-----\n...\n-----END RSA PRIVATE KEY-----'
+                        }
+                      />
+                    </Field>
+                    <Field label="支付宝公钥（PEM）">
+                      <Textarea
+                        rows={5}
+                        value={payment.payment_ali_public_key ?? ''}
+                        onChange={(e) => updatePayment('payment_ali_public_key', e.target.value)}
+                        placeholder={'-----BEGIN PUBLIC KEY-----\n...\n-----END PUBLIC KEY-----'}
+                      />
+                    </Field>
+                  </div>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <Field label="异步通知 URL（留空则自动拼接）">
+                      <Input
+                        value={payment.payment_ali_notify_url ?? ''}
+                        onChange={(e) => updatePayment('payment_ali_notify_url', e.target.value)}
+                      />
+                    </Field>
+                    <Field label="同步返回 URL（留空则自动拼接）">
+                      <Input
+                        value={payment.payment_ali_return_url ?? ''}
+                        onChange={(e) => updatePayment('payment_ali_return_url', e.target.value)}
+                      />
+                    </Field>
+                  </div>
+                </ProviderPanel>
               </CardContent>
             </Card>
           </TabsContent>
@@ -330,48 +383,50 @@ export default function PaymentConfigPage() {
           <TabsContent value="email">
             <Card>
               <CardContent className="space-y-4">
-                <Field label="SMTP 服务器" className="max-w-[320px]">
-                  <Input
-                    value={email.email_smtp_host ?? ''}
-                    onChange={(e) => updateEmail('email_smtp_host', e.target.value)}
-                    placeholder="smtp.example.com"
-                  />
-                </Field>
-                <Field label="端口" className="max-w-[200px]">
-                  <Input
-                    value={email.email_smtp_port ?? ''}
-                    onChange={(e) => updateEmail('email_smtp_port', e.target.value)}
-                    placeholder="465（SSL）或 587（STARTTLS）"
-                  />
-                </Field>
-                <Field label="用户名" className="max-w-[320px]">
-                  <Input
-                    value={email.email_smtp_user ?? ''}
-                    onChange={(e) => updateEmail('email_smtp_user', e.target.value)}
-                    placeholder="发信邮箱地址"
-                  />
-                </Field>
-                <Field label="密码 / 授权码" className="max-w-[320px]">
-                  <Input
-                    type="password"
-                    value={email.email_smtp_pass ?? ''}
-                    onChange={(e) => updateEmail('email_smtp_pass', e.target.value)}
-                  />
-                </Field>
-                <Field label="发件人名称" className="max-w-[240px]">
-                  <Input
-                    value={email.email_from_name ?? ''}
-                    onChange={(e) => updateEmail('email_from_name', e.target.value)}
-                    placeholder="授权中心"
-                  />
-                </Field>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <Field label="SMTP 服务器">
+                    <Input
+                      value={email.email_smtp_host ?? ''}
+                      onChange={(e) => updateEmail('email_smtp_host', e.target.value)}
+                      placeholder="smtp.example.com"
+                    />
+                  </Field>
+                  <Field label="端口">
+                    <Input
+                      value={email.email_smtp_port ?? ''}
+                      onChange={(e) => updateEmail('email_smtp_port', e.target.value)}
+                      placeholder="465（SSL）或 587（STARTTLS）"
+                    />
+                  </Field>
+                  <Field label="用户名">
+                    <Input
+                      value={email.email_smtp_user ?? ''}
+                      onChange={(e) => updateEmail('email_smtp_user', e.target.value)}
+                      placeholder="发信邮箱地址"
+                    />
+                  </Field>
+                  <Field label="密码 / 授权码">
+                    <Input
+                      type="password"
+                      value={email.email_smtp_pass ?? ''}
+                      onChange={(e) => updateEmail('email_smtp_pass', e.target.value)}
+                    />
+                  </Field>
+                  <Field label="发件人名称">
+                    <Input
+                      value={email.email_from_name ?? ''}
+                      onChange={(e) => updateEmail('email_from_name', e.target.value)}
+                      placeholder="授权中心"
+                    />
+                  </Field>
+                </div>
 
                 <Separator />
 
                 <Field label="发送测试邮件">
-                  <div className="flex items-center gap-3">
+                  <div className="flex flex-wrap items-center gap-3">
                     <Input
-                      className="w-[260px]"
+                      className="w-full sm:w-[280px]"
                       value={testEmailTo}
                       onChange={(e) => setTestEmailTo(e.target.value)}
                       placeholder="收件邮箱"
@@ -393,13 +448,15 @@ export default function PaymentConfigPage() {
           <TabsContent value="site">
             <Card>
               <CardContent className="space-y-4">
-                <Field label="站点名称" className="max-w-[320px]">
-                  <Input
-                    value={site.site_name ?? ''}
-                    onChange={(e) => updateSite('site_name', e.target.value)}
-                    placeholder="授权中心"
-                  />
-                </Field>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <Field label="站点名称">
+                    <Input
+                      value={site.site_name ?? ''}
+                      onChange={(e) => updateSite('site_name', e.target.value)}
+                      placeholder="授权中心"
+                    />
+                  </Field>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>

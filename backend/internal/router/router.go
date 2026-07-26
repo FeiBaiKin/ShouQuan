@@ -134,7 +134,9 @@ func setupStatic(r *gin.Engine) {
 
 	r.NoRoute(func(c *gin.Context) {
 		reqPath := c.Request.URL.Path
-		if c.Request.Method != http.MethodGet || strings.HasPrefix(reqPath, "/api") {
+		// 静态资源放行 GET/HEAD（Next 客户端路由预取用 HEAD 探测页面）；其余方法与 /api 未知路径按 404 处理
+		isRead := c.Request.Method == http.MethodGet || c.Request.Method == http.MethodHead
+		if !isRead || strings.HasPrefix(reqPath, "/api") {
 			c.JSON(http.StatusNotFound, gin.H{"error": "接口不存在"})
 			return
 		}
