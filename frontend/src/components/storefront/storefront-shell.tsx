@@ -6,8 +6,9 @@ import { usePathname, useSearchParams } from 'next/navigation'
 import { useTheme } from 'next-themes'
 import { Sun, Moon, ExternalLink, Menu, X } from 'lucide-react'
 import { storefrontApi } from '@/lib/api'
-import type { StorefrontProduct } from '@/lib/types'
+import type { SiteInfo, StorefrontProduct } from '@/lib/types'
 import { getProductContent } from '@/content/products'
+import { ContactLinks } from '@/components/storefront/contact-links'
 
 /**
  * 前台外壳：顶部导航（含产品列表/主题切换/移动菜单）+ footer。
@@ -24,12 +25,19 @@ export function StorefrontShell({ children }: { children: React.ReactNode }) {
   const isDark = mounted ? resolvedTheme === 'dark' : true
 
   const [products, setProducts] = useState<StorefrontProduct[]>([])
+  const [siteInfo, setSiteInfo] = useState<SiteInfo | null>(null)
   useEffect(() => {
     storefrontApi
       .products()
       .then(({ data }) => setProducts(data))
       .catch(() => {
         /* 导航失败不阻塞页面 */
+      })
+    storefrontApi
+      .siteInfo()
+      .then(({ data }) => setSiteInfo(data))
+      .catch(() => {
+        /* 联系方式加载失败不阻塞页面 */
       })
   }, [])
 
@@ -165,28 +173,31 @@ export function StorefrontShell({ children }: { children: React.ReactNode }) {
       <main className="flex-1">{children}</main>
 
       <footer className="border-t sf-line mt-auto">
-        <div className="mx-auto max-w-[1120px] px-5 py-8 flex flex-col sm:flex-row gap-4 sm:items-center sm:justify-between text-[12px] sf-muted">
-          <div className="flex items-center gap-2">
-            <span className="inline-flex h-5 w-5 items-center justify-center rounded bg-[color:var(--sf-mint)] text-white text-[9px] font-bold">
-              授
-            </span>
-            <span className="sf-display font-semibold">授权中心</span>
-            <span>· 付款后即时发码</span>
-          </div>
-          <div className="flex flex-wrap gap-x-5 gap-y-2">
-            <Link href="/" className="hover:text-[color:var(--sf-ink)] transition-colors">
-              产品目录
-            </Link>
-            {products.map((p) => (
-              <Link
-                key={p.id}
-                href={`/product?slug=${p.slug}`}
-                className="hover:text-[color:var(--sf-ink)] transition-colors"
-              >
-                {p.name}
+        <div className="mx-auto max-w-[1120px] px-5 py-8 flex flex-col gap-5 text-[12px] sf-muted">
+          <div className="flex flex-col sm:flex-row gap-4 sm:items-center sm:justify-between">
+            <div className="flex items-center gap-2">
+              <span className="inline-flex h-5 w-5 items-center justify-center rounded bg-[color:var(--sf-mint)] text-white text-[9px] font-bold">
+                授
+              </span>
+              <span className="sf-display font-semibold">授权中心</span>
+              <span>· 付款后即时发码</span>
+            </div>
+            <div className="flex flex-wrap gap-x-5 gap-y-2">
+              <Link href="/" className="hover:text-[color:var(--sf-ink)] transition-colors">
+                产品目录
               </Link>
-            ))}
+              {products.map((p) => (
+                <Link
+                  key={p.id}
+                  href={`/product?slug=${p.slug}`}
+                  className="hover:text-[color:var(--sf-ink)] transition-colors"
+                >
+                  {p.name}
+                </Link>
+              ))}
+            </div>
           </div>
+          {siteInfo && <ContactLinks contact={siteInfo.contact} />}
         </div>
       </footer>
     </div>

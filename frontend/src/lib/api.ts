@@ -15,6 +15,7 @@ import type {
   PurchaseOrder,
   OrderStats,
   PaymentConfigData,
+  SiteInfo,
 } from './types'
 
 // 生产环境同源部署（Go 托管），baseURL 用相对路径；
@@ -84,6 +85,7 @@ export const storefrontApi = {
       `/products/${slug}`,
     ),
   paymentMethods: () => store.get<{ methods: PaymentMethod[] }>('/payment-methods'),
+  siteInfo: () => store.get<SiteInfo>('/site-info'),
   createOrder: (data: {
     plan_id: number
     email: string

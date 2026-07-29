@@ -90,6 +90,30 @@ func StorefrontPaymentMethods(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"methods": payment.EnabledMethods(cfg)})
 }
 
+// storefrontContactKeys 前台展示的联系方式 key（返回时去掉 contact_ 前缀）
+var storefrontContactKeys = []string{
+	"contact_qq", "contact_qq_qr",
+	"contact_qq_group", "contact_qq_group_qr",
+	"contact_wechat", "contact_wechat_qr",
+	"contact_email",
+}
+
+// StorefrontSiteInfo GET /api/storefront/site-info
+// 站点公开信息：站点名 + 联系方式。后台留空的项不返回，前台即不展示。
+func StorefrontSiteInfo(c *gin.Context) {
+	a := getApp(c)
+	settings := a.Settings()
+	contact := gin.H{}
+	for _, k := range storefrontContactKeys {
+		if v := strings.TrimSpace(settings[k]); v != "" {
+			contact[strings.TrimPrefix(k, "contact_")] = v
+		}
+	}
+	// 联系方式含二维码 base64，允许浏览器短缓存，减少重复加载
+	c.Header("Cache-Control", "public, max-age=300")
+	c.JSON(http.StatusOK, gin.H{"site_name": a.SiteName(), "contact": contact})
+}
+
 // StorefrontCreateOrderRequest 创建订单请求体
 type StorefrontCreateOrderRequest struct {
 	PlanID        uint   `json:"plan_id" binding:"required"`

@@ -42,6 +42,7 @@ func Setup(a *app.App) *gin.Engine {
 		storefront.GET("/products", handler.StorefrontListProducts)
 		storefront.GET("/products/:slug", handler.StorefrontGetProduct)
 		storefront.GET("/payment-methods", handler.StorefrontPaymentMethods)
+		storefront.GET("/site-info", handler.StorefrontSiteInfo)
 		storefront.POST("/orders", handler.StorefrontCreateOrder)
 		storefront.GET("/orders/:orderNo", handler.StorefrontOrderStatus)
 		storefront.GET("/orders/:orderNo/download", handler.StorefrontDownloadRelease)

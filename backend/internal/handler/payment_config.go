@@ -4,6 +4,7 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -50,6 +51,20 @@ var siteConfigKeys = map[string]bool{
 	"site_name": true,
 }
 
+// 联系方式配置 key 白名单（*_qr 为二维码图片，存 base64 data URL；留空的项前台不展示）
+var contactConfigKeys = map[string]bool{
+	"contact_qq":          true,
+	"contact_qq_qr":       true,
+	"contact_qq_group":    true,
+	"contact_qq_group_qr": true,
+	"contact_wechat":      true,
+	"contact_wechat_qr":   true,
+	"contact_email":       true,
+}
+
+// 二维码 data URL 最大长度（约对应 500KB 图片的 base64）
+const contactQRMaxLen = 1 << 20
+
 var secretConfigKeys = map[string]bool{
 	"payment_wx_api_v3_key":   true,
 	"payment_wx_private_key":  true,
@@ -66,6 +81,7 @@ func PaymentConfigGet(c *gin.Context) {
 	paymentCfg := map[string]string{}
 	emailCfg := map[string]string{}
 	siteCfg := map[string]string{}
+	contactCfg := map[string]string{}
 	for k, v := range settings {
 		if paymentConfigKeys[k] {
 			if secretConfigKeys[k] && v != "" {
@@ -79,6 +95,8 @@ func PaymentConfigGet(c *gin.Context) {
 			emailCfg[k] = v
 		} else if siteConfigKeys[k] {
 			siteCfg[k] = v
+		} else if contactConfigKeys[k] {
+			contactCfg[k] = v
 		}
 	}
 	// 站点名兜底
@@ -89,6 +107,7 @@ func PaymentConfigGet(c *gin.Context) {
 		"payment": paymentCfg,
 		"email":   emailCfg,
 		"site":    siteCfg,
+		"contact": contactCfg,
 	})
 }
 
@@ -100,6 +119,7 @@ func PaymentConfigPut(c *gin.Context) {
 		Payment map[string]string `json:"payment"`
 		Email   map[string]string `json:"email"`
 		Site    map[string]string `json:"site"`
+		Contact map[string]string `json:"contact"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "参数错误"})
@@ -127,6 +147,26 @@ func PaymentConfigPut(c *gin.Context) {
 		if siteConfigKeys[k] {
 			updates[k] = v
 		}
+	}
+	for k, v := range req.Contact {
+		if !contactConfigKeys[k] {
+			continue
+		}
+		v = strings.TrimSpace(v)
+		if strings.HasSuffix(k, "_qr") {
+			if v != "" && !strings.HasPrefix(v, "data:image/") {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "二维码需为图片文件"})
+				return
+			}
+			if len(v) > contactQRMaxLen {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "二维码图片过大，请压缩到 500KB 以内"})
+				return
+			}
+		} else if len(v) > 200 {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "联系方式内容过长"})
+			return
+		}
+		updates[k] = v
 	}
 	// upsert
 	for k, v := range updates {

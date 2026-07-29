@@ -57,6 +57,22 @@ export interface PaymentMethod {
   scenes: string[]
 }
 
+// 站点公开信息（/api/storefront/site-info）：后台留空的联系方式项不会返回
+export interface SiteContact {
+  qq?: string
+  qq_qr?: string
+  qq_group?: string
+  qq_group_qr?: string
+  wechat?: string
+  wechat_qr?: string
+  email?: string
+}
+
+export interface SiteInfo {
+  site_name: string
+  contact: SiteContact
+}
+
 export interface OrderStatusResult {
   order_no: string
   amount: number
@@ -196,4 +212,5 @@ export interface PaymentConfigData {
   payment: Record<string, string>
   email: Record<string, string>
   site: Record<string, string>
+  contact: Record<string, string>
 }

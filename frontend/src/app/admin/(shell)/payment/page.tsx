@@ -1,7 +1,17 @@
 'use client'
 
-import { useEffect, useState, type ReactNode } from 'react'
-import { ChevronDown, CreditCard, Globe, Mail, Save, Send } from 'lucide-react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
+import {
+  ChevronDown,
+  Contact,
+  CreditCard,
+  Globe,
+  ImagePlus,
+  Mail,
+  Save,
+  Send,
+  Trash2,
+} from 'lucide-react'
 import { toast } from 'sonner'
 import { extractError, paymentConfigApi } from '@/lib/api'
 import { PageContainer, PageHeader } from '@/components/admin/page-header'
@@ -41,6 +51,73 @@ function Field({
     <div className={className ? `space-y-1.5 ${className}` : 'space-y-1.5'}>
       <Label>{label}</Label>
       {children}
+    </div>
+  )
+}
+
+/** 二维码上传：选图后转 base64 data URL 存入配置值，带预览与移除。 */
+function QrUploadField({
+  label,
+  value,
+  onChange,
+}: {
+  label: string
+  value: string
+  onChange: (v: string) => void
+}) {
+  const inputRef = useRef<HTMLInputElement | null>(null)
+  const pick = () => inputRef.current?.click()
+
+  const onFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    if (!file.type.startsWith('image/')) {
+      toast.warning('请选择图片文件')
+      return
+    }
+    if (file.size > 500 * 1024) {
+      toast.warning('图片不能超过 500KB，请压缩后再上传')
+      return
+    }
+    const reader = new FileReader()
+    reader.onload = () => onChange(String(reader.result ?? ''))
+    reader.readAsDataURL(file)
+  }
+
+  return (
+    <div className="space-y-1.5">
+      <Label>{label}</Label>
+      <input ref={inputRef} type="file" accept="image/*" className="hidden" onChange={onFile} />
+      {value ? (
+        <div className="flex items-start gap-3">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={value}
+            alt={label}
+            className="h-24 w-24 rounded-md border bg-white object-contain"
+          />
+          <div className="flex flex-col gap-2">
+            <Button type="button" variant="outline" size="sm" onClick={pick}>
+              <ImagePlus />
+              更换
+            </Button>
+            <Button type="button" variant="outline" size="sm" onClick={() => onChange('')}>
+              <Trash2 />
+              移除
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={pick}
+          className="flex h-24 w-24 flex-col items-center justify-center gap-1.5 rounded-md border border-dashed text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+        >
+          <ImagePlus className="size-5" />
+          <span className="text-xs">上传二维码</span>
+        </button>
+      )}
     </div>
   )
 }
@@ -112,6 +189,7 @@ export default function PaymentConfigPage() {
   const [payment, setPayment] = useState<Record<string, string>>({})
   const [email, setEmail] = useState<Record<string, string>>({})
   const [site, setSite] = useState<Record<string, string>>({})
+  const [contact, setContact] = useState<Record<string, string>>({})
   const [enabledProviders, setEnabledProviders] = useState<string[]>([])
   const [testEmailTo, setTestEmailTo] = useState('')
 
@@ -121,6 +199,8 @@ export default function PaymentConfigPage() {
     setEmail((prev) => ({ ...prev, [key]: value }))
   const updateSite = (key: string, value: string) =>
     setSite((prev) => ({ ...prev, [key]: value }))
+  const updateContact = (key: string, value: string) =>
+    setContact((prev) => ({ ...prev, [key]: value }))
 
   function toggleProvider(value: string, on: boolean) {
     setEnabledProviders((prev) =>
@@ -135,6 +215,7 @@ export default function PaymentConfigPage() {
       setPayment({ ...data.payment })
       setEmail({ ...data.email })
       setSite({ ...data.site })
+      setContact({ ...data.contact })
       // 解析已启用支付方式
       try {
         setEnabledProviders(
@@ -166,7 +247,7 @@ export default function PaymentConfigPage() {
     setPayment(nextPayment)
     setSaving(true)
     try {
-      await paymentConfigApi.update({ payment: nextPayment, email, site })
+      await paymentConfigApi.update({ payment: nextPayment, email, site, contact })
       toast.success('配置已保存')
       await load()
     } catch (err) {
@@ -196,7 +277,7 @@ export default function PaymentConfigPage() {
     <PageContainer>
       <PageHeader
         title="支付与邮件配置"
-        sub="配置支付通道、SMTP 邮件与站点信息"
+        sub="配置支付通道、SMTP 邮件、站点信息与联系方式"
         actions={
           <Button onClick={save} disabled={saving}>
             <Save />
@@ -221,6 +302,10 @@ export default function PaymentConfigPage() {
             <TabsTrigger value="site">
               <Globe />
               站点配置
+            </TabsTrigger>
+            <TabsTrigger value="contact">
+              <Contact />
+              联系方式
             </TabsTrigger>
           </TabsList>
 
@@ -456,6 +541,73 @@ export default function PaymentConfigPage() {
                       placeholder="授权中心"
                     />
                   </Field>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* 联系方式 */}
+          <TabsContent value="contact">
+            <Card>
+              <CardContent className="space-y-5">
+                <p className="m-0 text-xs text-muted-foreground">
+                  展示在前台页脚。留空的项前台不显示；上传了二维码的项，前台点击后弹出二维码。
+                </p>
+                <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                  <div className="space-y-4 rounded-lg border p-4">
+                    <Field label="QQ 号">
+                      <Input
+                        value={contact.contact_qq ?? ''}
+                        onChange={(e) => updateContact('contact_qq', e.target.value)}
+                        placeholder="如 12345678"
+                      />
+                    </Field>
+                    <QrUploadField
+                      label="QQ 二维码（可选）"
+                      value={contact.contact_qq_qr ?? ''}
+                      onChange={(v) => updateContact('contact_qq_qr', v)}
+                    />
+                  </div>
+                  <div className="space-y-4 rounded-lg border p-4">
+                    <Field label="QQ 群号">
+                      <Input
+                        value={contact.contact_qq_group ?? ''}
+                        onChange={(e) => updateContact('contact_qq_group', e.target.value)}
+                        placeholder="如 87654321"
+                      />
+                    </Field>
+                    <QrUploadField
+                      label="QQ 群二维码（可选）"
+                      value={contact.contact_qq_group_qr ?? ''}
+                      onChange={(v) => updateContact('contact_qq_group_qr', v)}
+                    />
+                  </div>
+                  <div className="space-y-4 rounded-lg border p-4">
+                    <Field label="微信号">
+                      <Input
+                        value={contact.contact_wechat ?? ''}
+                        onChange={(e) => updateContact('contact_wechat', e.target.value)}
+                        placeholder="微信号或备注文字"
+                      />
+                    </Field>
+                    <QrUploadField
+                      label="微信二维码（可选）"
+                      value={contact.contact_wechat_qr ?? ''}
+                      onChange={(v) => updateContact('contact_wechat_qr', v)}
+                    />
+                  </div>
+                  <div className="space-y-4 rounded-lg border p-4">
+                    <Field label="邮箱">
+                      <Input
+                        value={contact.contact_email ?? ''}
+                        onChange={(e) => updateContact('contact_email', e.target.value)}
+                        placeholder="support@example.com"
+                      />
+                    </Field>
+                    <p className="m-0 text-xs text-muted-foreground">
+                      前台点击后调起邮件客户端，无需二维码。
+                    </p>
+                  </div>
                 </div>
               </CardContent>
             </Card>
